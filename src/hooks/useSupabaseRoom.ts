@@ -118,21 +118,23 @@ export function useSupabaseRoom(roomId?: string) {
       // If it's a hit, attacker keeps turn. If miss, turn passes to me.
       const nextTurnId = result.isHit ? attackerId : myUserId;
 
+      const shotResult = {
+        ...result,
+        attackerId,
+        x,
+        y,
+        nextTurnId,
+      };
+
       // I broadcast the result back
       channel.send({
         type: 'broadcast',
         event: 'shot_result',
-        payload: {
-          ...result,
-          attackerId,
-          x,
-          y,
-          nextTurnId,
-        }
+        payload: shotResult
       });
 
-      // Update my own turn locally
-      store.setMyTurn(nextTurnId === myUserId);
+      // Update my own store locally as the defender
+      store.onShotResult(shotResult);
 
       // If that shot ended the game (all my ships sunk)
       if (result.isGameOver) {

@@ -32,6 +32,7 @@ interface GameStore {
   toggleOrientation: () => void;
   placeSelectedShip: (x: number, y: number) => boolean;
   removeShipById: (shipId: string) => void;
+  rotateShipInPlace: (shipId: string) => boolean;
   autoPlace: () => void;
   canPlaceAt: (shipId: string, x: number, y: number, isHorizontal: boolean) => boolean;
   getUnplacedShips: () => typeof SHIPS[number][];
@@ -109,6 +110,52 @@ export const useGameStore = create<GameStore>((set, get) => ({
       myBoard: removeShip(myBoard, ship.coordinates),
       myShips: myShips.filter(s => s.id !== shipId),
     });
+  },
+
+  rotateShipInPlace: (shipId) => {
+    const { myBoard, myShips } = get();
+    const ship = myShips.find(s => s.id === shipId);
+    if (!ship) return false;
+
+    const shipDef = getShipDef(shipId);
+    if (!shipDef) return false;
+
+    // 1. Determine current orientation
+    const isHorizontal = ship.coordinates.length > 1 &&
+      ship.coordinates[0][1] === ship.coordinates[1][1];
+
+    // 2. Pivot is the first coordinate
+    const [pivotX, pivotY] = ship.coordinates[0];
+
+    // 3. Remove the ship temporarily
+    const boardWithoutShip = removeShip(myBoard, ship.coordinates);
+
+    // 4. Calculate new orientation and adjust boundaries (slide inward)
+    const newHorizontal = !isHorizontal;
+    let startX = pivotX;
+    let startY = pivotY;
+
+    if (newHorizontal) {
+      if (startX + shipDef.length > 10) {
+        startX = 10 - shipDef.length;
+      }
+    } else {
+      if (startY + shipDef.length > 10) {
+        startY = 10 - shipDef.length;
+      }
+    }
+
+    // 5. Place ship in new orientation if valid
+    if (canPlaceShip(boardWithoutShip, shipDef.length, startX, startY, newHorizontal)) {
+      const { board, coordinates } = placeShipOnBoard(boardWithoutShip, shipDef.length, startX, startY, newHorizontal);
+      set({
+        myBoard: board,
+        myShips: myShips.map(s => s.id === shipId ? { ...s, coordinates } : s),
+      });
+      return true;
+    }
+
+    return false;
   },
 
   autoPlace: () => {

@@ -18,6 +18,7 @@ interface GridProps {
   onCellHover?: (x: number, y: number) => void;
   onCellLeave?: () => void;
   label?: string;
+  interactive?: boolean;        // allow interactive ship movements/rotations
 }
 
 const COL_LABELS = Array.from({ length: BOARD_SIZE }, (_, i) => String.fromCharCode(65 + i));
@@ -33,6 +34,7 @@ export default function Grid({
   onCellHover,
   onCellLeave,
   label,
+  interactive,
 }: GridProps) {
   const previewSet = new Set(
     hoverPreview?.cells.map(([x, y]) => `${x},${y}`) ?? []
@@ -85,7 +87,7 @@ export default function Grid({
 
             {/* Ship sprites overlay (own board only) */}
             {isOwn && ships?.map(ship => (
-              <ShipSprite key={ship.id} ship={ship} />
+              <ShipSprite key={ship.id} ship={ship} interactive={interactive} />
             ))}
           </div>
         </div>

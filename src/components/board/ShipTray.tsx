@@ -40,12 +40,29 @@ export default function ShipTray() {
                 }
               }}
             >
-              <img
-                src={ship.asset}
-                alt={ship.name}
-                className="ship-tray__image"
-                draggable={false}
-              />
+              <div className="ship-tray__image-container" style={{
+                width: `calc(12px * ${ship.length})`,
+                height: '24px',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <img
+                  src={ship.asset}
+                  alt={ship.name}
+                  className="ship-tray__image"
+                  style={{
+                    position: 'absolute',
+                    width: '20px',
+                    height: `calc(12px * ${ship.length})`,
+                    transform: 'rotate(-90deg)',
+                    objectFit: 'contain',
+                  }}
+                  draggable={false}
+                />
+              </div>
               <div className="ship-tray__info">
                 <span className="ship-tray__name">{ship.name}</span>
                 <span className="ship-tray__length">{ship.length} cells</span>

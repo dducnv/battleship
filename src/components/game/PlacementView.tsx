@@ -93,6 +93,7 @@ export default function PlacementView({ onReady }: PlacementViewProps) {
           onCellHover={handleCellHover}
           onCellLeave={handleCellLeave}
           label="Your Waters"
+          interactive={true}
         />
         <ShipTray />
       </div>

@@ -24,24 +24,25 @@ export default function ShipSprite({ ship }: ShipSpriteProps) {
   const minX = Math.min(...ship.coordinates.map(([x]) => x));
   const minY = Math.min(...ship.coordinates.map(([, y]) => y));
 
-  // Each cell is var(--cell-size) wide
-  // Position is based on grid cell indices
+  // Always render the container vertically starting from the top-left cell
   const style: React.CSSProperties = {
     position: 'absolute',
-    // Position at the top-left corner of the first cell
-    gridColumn: `${minX + 1} / span ${isHorizontal ? shipDef.length : 1}`,
-    gridRow: `${minY + 1} / span ${isHorizontal ? 1 : shipDef.length}`,
+    gridColumn: `${minX + 1} / span 1`,
+    gridRow: `${minY + 1} / span ${shipDef.length}`,
     width: '100%',
     height: '100%',
     pointerEvents: 'none',
     zIndex: 1,
+    // Rotate around the center of the first cell
+    transformOrigin: 'calc(var(--cell-size) / 2) calc(var(--cell-size) / 2)',
+    ...(isHorizontal ? { transform: 'rotate(-90deg)' } : {}),
   };
 
   const imgStyle: React.CSSProperties = {
     width: '100%',
     height: '100%',
     objectFit: 'fill',
-    ...(isHorizontal ? { transform: 'rotate(-90deg)' } : {}),
+    // No transform on the img itself, we rotated the container
   };
 
   return (

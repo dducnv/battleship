@@ -26,6 +26,7 @@ interface GameStore {
   isHorizontal: boolean; // placement orientation
   lastShotResult: ShotResult | null;
   opponentReady: boolean;
+  myReady: boolean;
 
   // ── Placement Actions ──
   selectShip: (shipId: string | null) => void;
@@ -37,6 +38,7 @@ interface GameStore {
   canPlaceAt: (shipId: string, x: number, y: number, isHorizontal: boolean) => boolean;
   getUnplacedShips: () => typeof SHIPS[number][];
   isAllShipsPlaced: () => boolean;
+  setMyReady: (ready: boolean) => void;
 
   // ── Game Actions ──
   setPhase: (phase: GamePhase) => void;
@@ -68,6 +70,7 @@ const createInitialState = () => ({
   isHorizontal: true,
   lastShotResult: null as ShotResult | null,
   opponentReady: false,
+  myReady: false,
 });
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -78,6 +81,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   selectShip: (shipId) => set({ selectedShipId: shipId }),
 
   toggleOrientation: () => set((s) => ({ isHorizontal: !s.isHorizontal })),
+
+  setMyReady: (myReady) => set({ myReady }),
 
   placeSelectedShip: (x, y) => {
     const { selectedShipId, myBoard, isHorizontal, myShips } = get();
@@ -222,12 +227,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   receiveEnemyShot: (x, y) => {
     const { myBoard, myShips } = get();
-    
+
     // Quick validation
     if (x < 0 || x >= 10 || y < 0 || y >= 10) return null;
     const cell = myBoard[y][x];
     if (cell === CellState.Miss || cell === CellState.Hit) return null; // Already shot
-    
+
     let isHit = false;
     let isSunk = false;
     let sunkShipId: string | null = null;
@@ -237,11 +242,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (cell === CellState.Ship) {
       isHit = true;
       newBoard[y][x] = CellState.Hit;
-      
+
       newShips = myShips.map(ship => {
         const isThisShip = ship.coordinates.some(([cx, cy]) => cx === x && cy === y);
         if (!isThisShip) return ship;
-        
+
         const newHitCount = ship.hitCount + 1;
         if (newHitCount === ship.coordinates.length) {
           isSunk = true;

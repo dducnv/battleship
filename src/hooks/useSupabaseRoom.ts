@@ -36,10 +36,11 @@ export function useSupabaseRoom(roomId?: string) {
     });
     channelRef.current = channel;
 
-    // ── Presence (Player Join/Leave) ──
+    // ── Presence (Player Join/Leave & Ready Sync) ──
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
       const playersInRoom = Object.keys(state);
+      const allPresence = Object.values(state).flat() as any[];
 
       lobbyStore.setConnected(true);
       lobbyStore.setJoining(false);
@@ -48,6 +49,27 @@ export function useSupabaseRoom(roomId?: string) {
       // If 2 players are here and we are in waiting phase, start placement
       if (playersInRoom.length === 2 && useGameStore.getState().phase === 'waiting') {
         useGameStore.getState().setPhase('placing');
+      }
+
+      // Check if opponent is ready via presence
+      const opponent = allPresence.find(p => p.userId !== myUserId);
+      if (opponent && opponent.ready === true) {
+        useGameStore.getState().onOpponentReady();
+      }
+
+      // Check if BOTH players in room are ready, start the game
+      const myPresence = allPresence.find(p => p.userId === myUserId);
+      const isIReady = myPresence?.ready === true;
+      const isOpponentReady = opponent?.ready === true;
+
+      if (playersInRoom.length === 2 && isIReady && isOpponentReady) {
+        const myState = useGameStore.getState();
+        if (myState.phase === 'placing') {
+          // Sort userIds deterministically to decide who goes first in P2P
+          const sortedIds = allPresence.map(p => p.userId).sort();
+          const firstTurnId = sortedIds[0];
+          myState.onGameStart(firstTurnId);
+        }
       }
 
       // If opponent left during playing
@@ -132,7 +154,7 @@ export function useSupabaseRoom(roomId?: string) {
 
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-        channel.track({ ready: false });
+        channel.track({ ready: false, userId: myUserId });
       } else if (status === 'CLOSED') {
         lobbyStore.setConnected(false);
       } else if (status === 'CHANNEL_ERROR') {
@@ -159,6 +181,13 @@ export function useSupabaseRoom(roomId?: string) {
     playerReady: () => {
       const channel = channelRef.current;
       if (channel) {
+        const store = useGameStore.getState();
+        store.setMyReady(true);
+
+        // Track ready state in Presence (syncs automatically to opponent)
+        channel.track({ ready: true, userId: myUserId });
+
+        // Send a redundant broadcast just in case
         channel.send({
           type: 'broadcast',
           event: 'player_ready',
@@ -166,10 +195,7 @@ export function useSupabaseRoom(roomId?: string) {
         });
 
         // Also check if opponent is already ready to start the game
-        const store = useGameStore.getState();
         if (store.opponentReady) {
-          // Both ready, determine first turn
-          // We need opponent's presence key. Let's just grab the other user id from presence
           const state = channel.presenceState();
           const players = Object.keys(state);
           const opponentId = players.find(id => id !== myUserId) || 'opponent';

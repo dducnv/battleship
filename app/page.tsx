@@ -59,6 +59,17 @@ export default function LobbyPage() {
           <p>Waiting for opponent to join room <strong>{roomId}</strong>...</p>
         </div>
       )}
+
+      <footer className="lobby-footer">
+        <p>Created for P2P Naval Combat</p>
+        <div className="lobby-footer__credits">
+          <a href="https://opengameart.org/content/battle-theme-a" target="_blank" rel="noopener noreferrer">Battle Theme</a>
+          <span className="lobby-footer__dot">•</span>
+          <a href="https://opengameart.org/content/sci-fi-sound-effects-library" target="_blank" rel="noopener noreferrer">SFX Library</a>
+          <span className="lobby-footer__dot">•</span>
+          <a href="https://opengameart.org/content/sea-warfare-set-ships-and-more" target="_blank" rel="noopener noreferrer">Ship Assets</a>
+        </div>
+      </footer>
     </div>
   );
 }

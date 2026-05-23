@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AudioProvider } from "../src/hooks/useAudio";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,7 +21,9 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {children}
+        <AudioProvider>
+          {children}
+        </AudioProvider>
       </body>
     </html>
   );

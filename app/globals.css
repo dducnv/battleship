@@ -179,11 +179,20 @@ body {
 .status-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 8px 24px;
   font-size: 12px;
   color: var(--color-text-dim);
   border-bottom: 1px solid var(--color-border);
+  background: rgba(10, 14, 26, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.status-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .status-bar__dot {
@@ -210,6 +219,52 @@ body {
 .status-bar__room {
   font-family: var(--font-mono);
   font-size: 11px;
+}
+
+.status-bar__audio {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-bar__audio-icon {
+  font-size: 14px;
+  filter: grayscale(1);
+}
+
+.status-bar__volume-slider {
+  appearance: none;
+  width: 80px;
+  height: 4px;
+  background: var(--color-surface-hover);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.status-bar__volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--color-primary-glow);
+  transition: transform 0.1s ease;
+}
+
+.status-bar__volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.status-bar__volume-percent {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  min-width: 28px;
+  text-align: right;
 }
 
 /* ── Lobby Page ── */
@@ -396,6 +451,38 @@ body {
   to {
     transform: rotate(360deg);
   }
+}
+
+.lobby-footer {
+  margin-top: auto;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--color-text-dim);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lobby-footer__credits {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.lobby-footer__credits a {
+  color: var(--color-text-dim);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.lobby-footer__credits a:hover {
+  color: var(--color-primary);
+}
+
+.lobby-footer__dot {
+  opacity: 0.3;
 }
 
 /* ── Game Page ── */

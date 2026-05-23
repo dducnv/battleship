@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 
 type SoundEffect = 'shot' | 'explosion' | 'your_turn' | 'win' | 'lose' | 'theme_battle';
 
@@ -13,8 +13,19 @@ const SOUND_FILES: Record<SoundEffect, string> = {
   theme_battle: '/audio/theme_battle.mp3',
 };
 
-export function useAudio() {
-  const [volume, setVolume] = useState(0.3); // Default 30% volume
+interface AudioContextType {
+  volume: number;
+  setVolume: (v: number) => void;
+  playSound: (effect: SoundEffect) => void;
+  stopSound: (effect: SoundEffect) => void;
+  startTheme: () => void;
+  stopTheme: () => void;
+}
+
+const AudioContext = createContext<AudioContextType | undefined>(undefined);
+
+export function AudioProvider({ children }: { children: React.ReactNode }) {
+  const [volume, setVolume] = useState(0.2); // Default 20% volume
   const audioRefs = useRef<Partial<Record<SoundEffect, HTMLAudioElement>>>({});
   const themeRef = useRef<HTMLAudioElement | null>(null);
 
@@ -31,7 +42,6 @@ export function useAudio() {
       }
     });
 
-    // Cleanup
     return () => {
       Object.values(audioRefs.current).forEach(audio => {
         audio?.pause();
@@ -40,13 +50,11 @@ export function useAudio() {
     };
   }, []);
 
-  // Update volume for all sounds
   useEffect(() => {
-    Object.values(audioRefs.current).forEach(audio => {
+    Object.entries(audioRefs.current).forEach(([key, audio]) => {
       if (audio) {
-        // Theme battle is usually louder/longer, maybe scale it differently if needed
-        // but for now, global volume is fine.
-        audio.volume = volume;
+        // Background theme is usually quieter
+        audio.volume = key === 'theme_battle' ? volume * 0.5 : volume;
       }
     });
   }, [volume]);
@@ -54,11 +62,8 @@ export function useAudio() {
   const playSound = (effect: SoundEffect) => {
     const audio = audioRefs.current[effect];
     if (audio) {
-      // For short SFX like shot/explosion, we want to allow overlapping or restarts
-      if (effect !== 'theme_battle') {
-        audio.currentTime = 0;
-      }
-      audio.play().catch(e => console.warn('Audio playback failed:', e));
+      if (effect !== 'theme_battle') audio.currentTime = 0;
+      audio.play().catch(() => {});
     }
   };
 
@@ -72,8 +77,7 @@ export function useAudio() {
 
   const startTheme = () => {
     if (themeRef.current) {
-      themeRef.current.volume = volume * 0.5; // Theme background usually quieter
-      themeRef.current.play().catch(e => console.warn('Theme playback failed:', e));
+      themeRef.current.play().catch(() => {});
     }
   };
 
@@ -84,5 +88,15 @@ export function useAudio() {
     }
   };
 
-  return { volume, setVolume, playSound, stopSound, startTheme, stopTheme };
+  return (
+    <AudioContext.Provider value={{ volume, setVolume, playSound, stopSound, startTheme, stopTheme }}>
+      {children}
+    </AudioContext.Provider>
+  );
+}
+
+export function useAudio() {
+  const context = useContext(AudioContext);
+  if (!context) throw new Error('useAudio must be used within AudioProvider');
+  return context;
 }

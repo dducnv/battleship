@@ -29,10 +29,17 @@
 4. **Turn Logic & "Hit-Again" Rule:**
    - Fixed a bug where turns always switched after every shot. Implemented the standard rule: the attacker keeps their turn if they hit a ship, and only passes the turn on a miss.
    - Synchronized `onShotResult` to update state for both the attacker and the defender, ensuring consistent UI feedback (Hit/Miss messages) for both players simultaneously.
+5. **Audio & SFX Integration:**
+   - Implemented a global `AudioProvider` via `useAudio` hook to manage game sounds and background music.
+   - Added `theme_battle` music that triggers when the `playing` phase begins.
+   - Integrated SFX triggers for `shot`, `explosion` (on hit), `your_turn`, `win`, and `lose` events.
+   - Added a global volume control slider in the `StatusBar` with persistent state via React Context.
 
-## 5. Current Status
+## 4. Current Status
 - The core loop is fully playable: **Lobby -> Ship Placement -> Ready Sync -> Turn-based Combat -> Victory/Defeat screen.**
 - Future chats should use this context to understand the established P2P architecture before making sweeping changes to game logic or multiplayer sync.
 
-
-https://opengameart.org/content/battle-theme-a
+## 5. Credits & Assets
+- **Battle Theme:** [Battle Theme A](https://opengameart.org/content/battle-theme-a) by remy_sharma.
+- **Sound Effects:** [Sci-Fi Sound Effects Library](https://opengameart.org/content/sci-fi-sound-effects-library) by LittleRobotSoundFactory.
+- **Ship Assets:** [Sea Warfare Set](https://opengameart.org/content/sea-warfare-set-ships-and-more) by Skorpio.

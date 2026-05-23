@@ -106,9 +106,18 @@ export default function PlacementView({ onReady }: PlacementViewProps) {
         <button
           className="btn btn--primary btn--lg"
           onClick={handleReady}
-          disabled={!isAllPlaced()}
+          disabled={!isAllPlaced() || myReady}
         >
-          {isAllPlaced() ? '⚓ Ready for Battle!' : `Place all ships (${myShips.length}/5)`}
+          {myReady ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
+              <span className="lobby-waiting__spinner" style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#fff', borderRadius: '50%' }} />
+              Waiting for Opponent...
+            </span>
+          ) : isAllPlaced() ? (
+            '⚓ Ready for Battle!'
+          ) : (
+            `Place all ships (${myShips.length}/5)`
+          )}
         </button>
       </div>
     </div>

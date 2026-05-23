@@ -147,6 +147,10 @@ export function useSupabaseRoom(roomId?: string) {
 
     // 5. Restart requested
     channel.on('broadcast', { event: 'request_restart' }, () => {
+      // Reset presence track to not ready
+      if (channelRef.current) {
+        channelRef.current.track({ ready: false, userId: myUserId });
+      }
       useGameStore.getState().reset();
       useGameStore.getState().setPhase('placing');
       useGameStore.getState().setMySocketId(myUserId);
@@ -219,6 +223,9 @@ export function useSupabaseRoom(roomId?: string) {
     requestRestart: () => {
       const channel = channelRef.current;
       if (channel) {
+        // Reset presence track to not ready
+        channel.track({ ready: false, userId: myUserId });
+
         channel.send({
           type: 'broadcast',
           event: 'request_restart',

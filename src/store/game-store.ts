@@ -42,10 +42,11 @@ interface GameStore {
   setMySocketId: (id: string) => void;
   setMyTurn: (isMyTurn: boolean) => void;
 
-  // ── Server Event Handlers ──
+  // ── Server / Peer Event Handlers ──
   onGameStart: (activeTurnId: string) => void;
   onShotResult: (result: ShotResult) => void;
   onEnemyShot: (x: number, y: number, isHit: boolean) => void;
+  receiveEnemyShot: (x: number, y: number) => { isHit: boolean; isSunk: boolean; sunkShipId: string | null; isGameOver: boolean } | null;
   onGameOver: (winnerId: string, opponentBoard?: Board) => void;
   onOpponentReady: () => void;
 
@@ -164,12 +165,56 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   onEnemyShot: (x, y, isHit) => {
-    // Enemy shot at my board → update my board visually
+    // Enemy shot at my board → update my board visually (if not using receiveEnemyShot directly)
     const { myBoard } = get();
     const newBoard = myBoard.map(row => [...row]);
     newBoard[y][x] = isHit ? CellState.Hit : CellState.Miss;
 
     set({ myBoard: newBoard });
+  },
+
+  receiveEnemyShot: (x, y) => {
+    const { myBoard, myShips } = get();
+    
+    // Quick validation
+    if (x < 0 || x >= 10 || y < 0 || y >= 10) return null;
+    const cell = myBoard[y][x];
+    if (cell === CellState.Miss || cell === CellState.Hit) return null; // Already shot
+    
+    let isHit = false;
+    let isSunk = false;
+    let sunkShipId: string | null = null;
+    let newBoard = myBoard.map(row => [...row]);
+    let newShips = [...myShips];
+
+    if (cell === CellState.Ship) {
+      isHit = true;
+      newBoard[y][x] = CellState.Hit;
+      
+      newShips = myShips.map(ship => {
+        const isThisShip = ship.coordinates.some(([cx, cy]) => cx === x && cy === y);
+        if (!isThisShip) return ship;
+        
+        const newHitCount = ship.hitCount + 1;
+        if (newHitCount === ship.coordinates.length) {
+          isSunk = true;
+          sunkShipId = ship.id;
+        }
+        return { ...ship, hitCount: newHitCount };
+      });
+    } else {
+      newBoard[y][x] = CellState.Miss;
+    }
+
+    const totalHits = newShips.reduce((sum, s) => sum + s.hitCount, 0);
+    const isGameOver = totalHits >= 17;
+
+    set({
+      myBoard: newBoard,
+      myShips: newShips,
+    });
+
+    return { isHit, isSunk, sunkShipId, isGameOver };
   },
 
   onGameOver: (winnerId, opponentBoard) => {

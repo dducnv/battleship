@@ -20,6 +20,7 @@ export default function PlacementView({ onReady }: PlacementViewProps) {
   const toggleOrientation = useGameStore(s => s.toggleOrientation);
   const isAllPlaced = useGameStore(s => s.isAllShipsPlaced);
   const opponentReady = useGameStore(s => s.opponentReady);
+  const myReady = useGameStore(s => s.myReady);
 
   const [hoverPreview, setHoverPreview] = useState<{
     cells: Coordinate[];

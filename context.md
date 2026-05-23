@@ -34,8 +34,11 @@
    - Added `theme_battle` music that triggers when the `playing` phase begins.
    - Integrated SFX triggers for `shot`, `explosion` (on hit), `your_turn`, `win`, and `lose` events.
    - Added a global volume control slider in the `StatusBar` with persistent state via React Context.
+6. **SEO Optimization:**
+   - Updated `app/layout.tsx` with comprehensive English metadata (Open Graph, Twitter Cards, Keywords).
+   - Added `robots.txt` and optimized semantic HTML structure for search engine indexing.
 
-## 4. Current Status
+## 6. Current Status
 - The core loop is fully playable: **Lobby -> Ship Placement -> Ready Sync -> Turn-based Combat -> Victory/Defeat screen.**
 - Future chats should use this context to understand the established P2P architecture before making sweeping changes to game logic or multiplayer sync.
 

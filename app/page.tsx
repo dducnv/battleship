@@ -31,11 +31,11 @@ export default function LobbyPage() {
       <StatusBar />
 
       <div className="lobby-header">
-        <div className="lobby-header__icon">
+        <div className="lobby-header__icon" aria-hidden="true">
           <Crosshair size={48} strokeWidth={1.5} />
         </div>
-        <h1 className="lobby-header__title">Battleship</h1>
-        <p className="lobby-header__subtitle">Sink the enemy fleet. Dominate the seas.</p>
+        <h1 className="lobby-header__title">Battleship P2P</h1>
+        <p className="lobby-header__subtitle">The ultimate real-time naval combat experience. No login, no hassle—just pure strategy.</p>
       </div>
 
       <div className="lobby-cards">

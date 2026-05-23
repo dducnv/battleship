@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSocket } from '../../../src/hooks/useSocket';
+import { useSupabaseRoom } from '../../../src/hooks/useSupabaseRoom';
 import { useGameStore } from '../../../src/store/game-store';
 import { useLobbyStore } from '../../../src/store/lobby-store';
 import StatusBar from '../../../src/components/shared/StatusBar';
@@ -14,7 +14,7 @@ import { use } from 'react';
 export default function GameRoom({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
   const router = useRouter();
-  const { playerReady, fireShot, requestRestart, disconnect } = useSocket(roomId);
+  const { playerReady, fireShot, requestRestart, disconnect } = useSupabaseRoom(roomId);
   const phase = useGameStore(s => s.phase);
   const error = useLobbyStore(s => s.error);
 

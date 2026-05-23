@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useSocket } from '../src/hooks/useSocket';
+import { useSupabaseRoom } from '../src/hooks/useSupabaseRoom';
 import { useLobbyStore } from '../src/store/lobby-store';
 import { useGameStore } from '../src/store/game-store';
 import CreateRoom from '../src/components/lobby/CreateRoom';
@@ -12,7 +12,7 @@ import { useEffect } from 'react';
 
 export default function LobbyPage() {
   const router = useRouter();
-  const { createRoom, joinRoom } = useSocket();
+  const { createRoom, joinRoom } = useSupabaseRoom();
   const roomId = useLobbyStore(s => s.roomId);
   const isJoining = useLobbyStore(s => s.isJoining);
   const error = useLobbyStore(s => s.error);

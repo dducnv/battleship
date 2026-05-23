@@ -35,7 +35,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       const audio = new Audio(path);
       audio.preload = 'auto';
       audioRefs.current[key as SoundEffect] = audio;
-      
+
       if (key === 'theme_battle') {
         audio.loop = true;
         themeRef.current = audio;
@@ -63,7 +63,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const audio = audioRefs.current[effect];
     if (audio) {
       if (effect !== 'theme_battle') audio.currentTime = 0;
-      audio.play().catch(() => {});
+      audio.play().catch(() => { });
     }
   };
 
@@ -77,7 +77,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const startTheme = () => {
     if (themeRef.current) {
-      themeRef.current.play().catch(() => {});
+      themeRef.current.play().catch(() => { });
     }
   };
 

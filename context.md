@@ -41,5 +41,6 @@
 
 ## 5. Credits & Assets
 - **Battle Theme:** [Battle Theme A](https://opengameart.org/content/battle-theme-a) by remy_sharma.
-- **Sound Effects:** [Sci-Fi Sound Effects Library](https://opengameart.org/content/sci-fi-sound-effects-library) by LittleRobotSoundFactory.
+- **Sound Effects:** [Sci-Fi Sound Effects Library](https://opengameart.org/content/sci-fi-sound-effects-library) by LittleRobotSoundFactory and [Big Explosion](https://opengameart.org/content/big-explosion) by strizis.
+- **Ship Sunk SFX:** `DeathFlash.flac`.
 - **Ship Assets:** [Sea Warfare Set](https://opengameart.org/content/sea-warfare-set-ships-and-more) by Skorpio.

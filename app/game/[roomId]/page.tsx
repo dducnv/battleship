@@ -57,9 +57,14 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
       // If it was a hit, play explosion shortly after
       if (lastShotResult.isHit) {
         setTimeout(() => playSound('explosion'), 300);
+        
+        // If the ship was sunk, play the death flash sound
+        if (lastShotResult.isSunk) {
+          setTimeout(() => playSound('sunk'), 800);
+        }
       }
     }
-  }, [lastShotResult]);
+  }, [lastShotResult, playSound]);
 
   useEffect(() => {
     if (phase === 'ended') {

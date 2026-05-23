@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 
-type SoundEffect = 'shot' | 'explosion' | 'your_turn' | 'win' | 'lose' | 'theme_battle';
+type SoundEffect = 'shot' | 'explosion' | 'your_turn' | 'win' | 'lose' | 'theme_battle' | 'sunk';
 
 const SOUND_FILES: Record<SoundEffect, string> = {
   shot: '/audio/shot.mp3',
@@ -11,6 +11,7 @@ const SOUND_FILES: Record<SoundEffect, string> = {
   win: '/audio/win.mp3',
   lose: '/audio/lose.mp3',
   theme_battle: '/audio/theme_battle.mp3',
+  sunk: '/audio/DeathFlash.flac',
 };
 
 interface AudioContextType {

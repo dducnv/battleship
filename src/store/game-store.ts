@@ -26,6 +26,7 @@ interface GameStore {
   isHorizontal: boolean; // placement orientation
   lastShotResult: ShotResult | null;
   opponentReady: boolean;
+  opponentId: string | null;
   myReady: boolean;
 
   // ── Placement Actions ──
@@ -51,7 +52,7 @@ interface GameStore {
   onEnemyShot: (x: number, y: number, isHit: boolean) => void;
   receiveEnemyShot: (x: number, y: number) => { isHit: boolean; isSunk: boolean; sunkShipId: string | null; isGameOver: boolean } | null;
   onGameOver: (winnerId: string, opponentBoard?: Board) => void;
-  onOpponentReady: () => void;
+  onOpponentReady: (opponentId?: string) => void;
 
   // ── Reset ──
   reset: () => void;
@@ -70,6 +71,7 @@ const createInitialState = () => ({
   isHorizontal: true,
   lastShotResult: null as ShotResult | null,
   opponentReady: false,
+  opponentId: null as string | null,
   myReady: false,
 });
 
@@ -111,9 +113,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const ship = myShips.find(s => s.id === shipId);
     if (!ship) return;
 
+    const isHorizontal = ship.coordinates.length <= 1 || ship.coordinates[0][1] === ship.coordinates[1][1];
+
     set({
       myBoard: removeShip(myBoard, ship.coordinates),
       myShips: myShips.filter(s => s.id !== shipId),
+      selectedShipId: shipId,
+      isHorizontal,
     });
   },
 
@@ -204,25 +210,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   onShotResult: (result) => {
-    // This is MY shot result → update tracking board
-    const { trackingBoard } = get();
-    const newTracking = trackingBoard.map(row => [...row]);
-    newTracking[result.y][result.x] = result.isHit ? CellState.Hit : CellState.Miss;
+    const { mySocketId, trackingBoard, myBoard } = get();
+    const isIWasAttacker = result.attackerId === mySocketId;
 
-    set({
-      trackingBoard: newTracking,
-      isMyTurn: result.nextTurnId === get().mySocketId,
-      lastShotResult: result,
-    });
+    if (isIWasAttacker) {
+      // My shot result → update tracking board
+      const newTracking = trackingBoard.map(row => [...row]);
+      newTracking[result.y][result.x] = result.isHit ? CellState.Hit : CellState.Miss;
+      set({
+        trackingBoard: newTracking,
+        isMyTurn: result.nextTurnId === mySocketId,
+        lastShotResult: result,
+      });
+    } else {
+      // Enemy shot result (already updated myBoard in receiveEnemyShot)
+      set({
+        isMyTurn: result.nextTurnId === mySocketId,
+        lastShotResult: result,
+      });
+    }
   },
 
   onEnemyShot: (x, y, isHit) => {
-    // Enemy shot at my board → update my board visually (if not using receiveEnemyShot directly)
-    const { myBoard } = get();
-    const newBoard = myBoard.map(row => [...row]);
-    newBoard[y][x] = isHit ? CellState.Hit : CellState.Miss;
-
-    set({ myBoard: newBoard });
+    // This is now redundant with receiveEnemyShot but kept for safety
+    // or we can remove it. Let's keep it but ensure it doesn't conflict.
   },
 
   receiveEnemyShot: (x, y) => {
@@ -236,7 +247,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     let isHit = false;
     let isSunk = false;
     let sunkShipId: string | null = null;
-    let newBoard = myBoard.map(row => [...row]);
+    const newBoard = myBoard.map(row => [...row]);
     let newShips = [...myShips];
 
     if (cell === CellState.Ship) {
@@ -277,7 +288,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
-  onOpponentReady: () => set({ opponentReady: true }),
+  onOpponentReady: (opponentId) => set((s) => ({ opponentReady: true, opponentId: opponentId || s.opponentId })),
 
   // ── Reset ──
   reset: () => set(createInitialState()),

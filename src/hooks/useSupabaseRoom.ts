@@ -10,16 +10,27 @@ function generateRoomId() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+let globalChannel: ReturnType<typeof supabase.channel> | null = null;
+let activeRoomId: string | null = null;
+
 /**
  * Hook that manages Supabase Realtime channel lifecycle and P2P game logic.
  */
 export function useSupabaseRoom(roomId?: string) {
   const hasInitialized = useRef(false);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!roomId) return;
-    if (hasInitialized.current) return;
+    if (activeRoomId === roomId && globalChannel) {
+      // Already connected or connecting to this room globally
+      return;
+    }
+
+    if (globalChannel) {
+      globalChannel.unsubscribe();
+    }
+
+    activeRoomId = roomId;
     hasInitialized.current = true;
 
     const gameStore = useGameStore.getState();
@@ -34,13 +45,13 @@ export function useSupabaseRoom(roomId?: string) {
         presence: { key: myUserId },
       },
     });
-    channelRef.current = channel;
+    globalChannel = channel;
 
     // ── Presence (Player Join/Leave & Ready Sync) ──
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
       const playersInRoom = Object.keys(state);
-      const allPresence = Object.values(state).flat() as any[];
+      const allPresence = Object.values(state).flat() as unknown as { userId: string; ready?: boolean }[];
 
       lobbyStore.setConnected(true);
       lobbyStore.setJoining(false);
@@ -54,12 +65,11 @@ export function useSupabaseRoom(roomId?: string) {
       // Check if opponent is ready via presence
       const opponent = allPresence.find(p => p.userId !== myUserId);
       if (opponent && opponent.ready === true) {
-        useGameStore.getState().onOpponentReady();
+        useGameStore.getState().onOpponentReady(opponent.userId);
       }
 
       // Check if BOTH players in room are ready, start the game
-      const myPresence = allPresence.find(p => p.userId === myUserId);
-      const isIReady = myPresence?.ready === true;
+      const isIReady = useGameStore.getState().myReady;
       const isOpponentReady = opponent?.ready === true;
 
       if (playersInRoom.length === 2 && isIReady && isOpponentReady) {
@@ -83,12 +93,12 @@ export function useSupabaseRoom(roomId?: string) {
 
     // 1. Opponent is ready with their board
     channel.on('broadcast', { event: 'player_ready' }, ({ payload }) => {
-      useGameStore.getState().onOpponentReady();
+      useGameStore.getState().onOpponentReady(payload.userId);
 
       // If I am also ready, we should start the game.
       // To decide who goes first in P2P without server, we can sort userIds
       const myState = useGameStore.getState();
-      if (myState.phase === 'placing' && myState.isAllShipsPlaced()) {
+      if (myState.phase === 'placing' && myState.myReady) {
         const sortedIds = [myUserId, payload.userId].sort();
         const firstTurnId = sortedIds[0];
         myState.onGameStart(firstTurnId);
@@ -103,10 +113,12 @@ export function useSupabaseRoom(roomId?: string) {
       const store = useGameStore.getState();
       const result = store.receiveEnemyShot(x, y);
 
-      if (!result) return; // Invalid shot
+      if (!result) return; // Invalid shot (already shot or out of bounds)
+
+      // If it's a hit, attacker keeps turn. If miss, turn passes to me.
+      const nextTurnId = result.isHit ? attackerId : myUserId;
 
       // I broadcast the result back
-      const nextTurnId = myUserId; // Turn passes to me
       channel.send({
         type: 'broadcast',
         event: 'shot_result',
@@ -118,6 +130,9 @@ export function useSupabaseRoom(roomId?: string) {
           nextTurnId,
         }
       });
+
+      // Update my own turn locally
+      store.setMyTurn(nextTurnId === myUserId);
 
       // If that shot ended the game (all my ships sunk)
       if (result.isGameOver) {
@@ -148,8 +163,8 @@ export function useSupabaseRoom(roomId?: string) {
     // 5. Restart requested
     channel.on('broadcast', { event: 'request_restart' }, () => {
       // Reset presence track to not ready
-      if (channelRef.current) {
-        channelRef.current.track({ ready: false, userId: myUserId });
+      if (globalChannel) {
+        globalChannel.track({ ready: false, userId: myUserId });
       }
       useGameStore.getState().reset();
       useGameStore.getState().setPhase('placing');
@@ -158,7 +173,12 @@ export function useSupabaseRoom(roomId?: string) {
 
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-        channel.track({ ready: false, userId: myUserId });
+        // Use setTimeout to avoid 'falling back to REST API' race condition
+        setTimeout(() => {
+          if (globalChannel?.state === 'joined') {
+            globalChannel.track({ ready: false, userId: myUserId });
+          }
+        }, 100);
       } else if (status === 'CLOSED') {
         lobbyStore.setConnected(false);
       } else if (status === 'CHANNEL_ERROR') {
@@ -167,7 +187,7 @@ export function useSupabaseRoom(roomId?: string) {
     });
 
     return () => {
-      channel.unsubscribe();
+      // Intentionally empty: keep channel alive across page navigations
     };
   }, [roomId]);
 
@@ -183,26 +203,33 @@ export function useSupabaseRoom(roomId?: string) {
       return id;
     },
     playerReady: () => {
-      const channel = channelRef.current;
+      const channel = globalChannel;
       if (channel) {
         const store = useGameStore.getState();
         store.setMyReady(true);
 
-        // Track ready state in Presence (syncs automatically to opponent)
-        channel.track({ ready: true, userId: myUserId });
+        const sendReady = () => {
+          channel.track({ ready: true, userId: myUserId });
+          channel.send({
+            type: 'broadcast',
+            event: 'player_ready',
+            payload: { userId: myUserId }
+          });
+        };
 
-        // Send a redundant broadcast just in case
-        channel.send({
-          type: 'broadcast',
-          event: 'player_ready',
-          payload: { userId: myUserId }
-        });
+        if (channel.state !== 'joined') {
+          // If disconnected due to HMR or network, wait a bit
+          setTimeout(sendReady, 500);
+        } else {
+          sendReady();
+        }
 
         // Also check if opponent is already ready to start the game
         if (store.opponentReady) {
           const state = channel.presenceState();
           const players = Object.keys(state);
-          const opponentId = players.find(id => id !== myUserId) || 'opponent';
+          const presenceOpponentId = players.find(id => id !== myUserId);
+          const opponentId = store.opponentId || presenceOpponentId || 'opponent';
 
           const sortedIds = [myUserId, opponentId].sort();
           const firstTurnId = sortedIds[0];
@@ -211,8 +238,8 @@ export function useSupabaseRoom(roomId?: string) {
       }
     },
     fireShot: (x: number, y: number) => {
-      const channel = channelRef.current;
-      if (channel) {
+      const channel = globalChannel;
+      if (channel && channel.state === 'joined') {
         channel.send({
           type: 'broadcast',
           event: 'fire_shot',
@@ -221,7 +248,7 @@ export function useSupabaseRoom(roomId?: string) {
       }
     },
     requestRestart: () => {
-      const channel = channelRef.current;
+      const channel = globalChannel;
       if (channel) {
         // Reset presence track to not ready
         channel.track({ ready: false, userId: myUserId });
@@ -238,8 +265,10 @@ export function useSupabaseRoom(roomId?: string) {
       }
     },
     disconnect: () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
+      if (globalChannel) {
+        globalChannel.unsubscribe();
+        globalChannel = null;
+        activeRoomId = null;
       }
       useLobbyStore.getState().reset();
       useGameStore.getState().reset();

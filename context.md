@@ -26,11 +26,13 @@
    - Fixed mapping of Supabase's `{ presence_ref: string }` default type to our custom `{ userId, ready }` presence payload using `as unknown as Type`.
 3. **Ship Placement Rotation UX:**
    - Fixed a bug where picking up a ship from the board (to replace it) would reset its orientation. Now, `removeShipById` preserves the `isHorizontal` state and auto-selects the ship for a seamless drag-and-drop/click UX.
-4. **Game Start Sync / Infinite Loading Bug (CRITICAL):**
-   - Fixed a P2P sync desynchronization where Player 1 would get stuck on "Waiting for opponent...".
-   - Previously, receiving a `player_ready` broadcast would incorrectly start the game for the receiver if they had merely placed all ships (`isAllShipsPlaced`). It now strictly requires the receiver to have also clicked Ready (`myReady === true`).
-   - Added robust tracking of `opponentId` in the Zustand store to ensure both peers deterministically sort their user IDs to decide who takes the first turn.
+4. **Turn Logic & "Hit-Again" Rule:**
+   - Fixed a bug where turns always switched after every shot. Implemented the standard rule: the attacker keeps their turn if they hit a ship, and only passes the turn on a miss.
+   - Synchronized `onShotResult` to update state for both the attacker and the defender, ensuring consistent UI feedback (Hit/Miss messages) for both players simultaneously.
 
-## 4. Current Status
+## 5. Current Status
 - The core loop is fully playable: **Lobby -> Ship Placement -> Ready Sync -> Turn-based Combat -> Victory/Defeat screen.**
 - Future chats should use this context to understand the established P2P architecture before making sweeping changes to game logic or multiplayer sync.
+
+
+https://opengameart.org/content/battle-theme-a

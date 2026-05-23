@@ -9,6 +9,7 @@ import StatusBar from '../../../src/components/shared/StatusBar';
 import PlacementView from '../../../src/components/game/PlacementView';
 import BattleView from '../../../src/components/game/BattleView';
 import GameOverModal from '../../../src/components/game/GameOverModal';
+import { useAudio } from '../../../src/hooks/useAudio';
 import { use } from 'react';
 
 export default function GameRoom({ params }: { params: Promise<{ roomId: string }> }) {
@@ -17,6 +18,12 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const { playerReady, fireShot, requestRestart, disconnect } = useSupabaseRoom(roomId);
   const phase = useGameStore(s => s.phase);
   const error = useLobbyStore(s => s.error);
+  const isMyTurn = useGameStore(s => s.isMyTurn);
+  const lastShotResult = useGameStore(s => s.lastShotResult);
+  const winnerId = useGameStore(s => s.winnerId);
+  const mySocketId = useGameStore(s => s.mySocketId);
+
+  const { playSound, startTheme, stopTheme } = useAudio();
 
   // Handle errors (e.g., room not found, opponent disconnected)
   useEffect(() => {
@@ -27,6 +34,42 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
       return () => clearTimeout(timer);
     }
   }, [error, router]);
+
+  // Audio Effects Lifecycle
+  useEffect(() => {
+    if (phase === 'playing') {
+      startTheme();
+    } else {
+      stopTheme();
+    }
+  }, [phase, startTheme, stopTheme]);
+
+  useEffect(() => {
+    if (phase === 'playing' && isMyTurn) {
+      playSound('your_turn');
+    }
+  }, [isMyTurn, phase]);
+
+  useEffect(() => {
+    if (lastShotResult) {
+      // Play shot sound first
+      playSound('shot');
+      // If it was a hit, play explosion shortly after
+      if (lastShotResult.isHit) {
+        setTimeout(() => playSound('explosion'), 300);
+      }
+    }
+  }, [lastShotResult]);
+
+  useEffect(() => {
+    if (phase === 'ended') {
+      if (winnerId === mySocketId) {
+        playSound('win');
+      } else {
+        playSound('lose');
+      }
+    }
+  }, [phase, winnerId, mySocketId]);
 
   const handleReady = () => {
     playerReady();

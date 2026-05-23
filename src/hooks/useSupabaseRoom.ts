@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react';
 import { supabase, myUserId } from '../supabase/client';
 import { useGameStore } from '../store/game-store';
 import { useLobbyStore } from '../store/lobby-store';
-import { nanoid } from '../../server/utils'; // wait, I deleted server/! I need to copy nanoid somewhere. I will use Math.random()
 
 // Let's implement nanoid locally
 function generateRoomId() {
@@ -41,7 +40,7 @@ export function useSupabaseRoom(roomId?: string) {
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
       const playersInRoom = Object.keys(state);
-      
+
       lobbyStore.setConnected(true);
       lobbyStore.setJoining(false);
       lobbyStore.setTotalPlayers(playersInRoom.length);
@@ -63,7 +62,7 @@ export function useSupabaseRoom(roomId?: string) {
     // 1. Opponent is ready with their board
     channel.on('broadcast', { event: 'player_ready' }, ({ payload }) => {
       useGameStore.getState().onOpponentReady();
-      
+
       // If I am also ready, we should start the game.
       // To decide who goes first in P2P without server, we can sort userIds
       const myState = useGameStore.getState();
@@ -77,7 +76,7 @@ export function useSupabaseRoom(roomId?: string) {
     // 2. Opponent fired a shot at my board
     channel.on('broadcast', { event: 'fire_shot' }, ({ payload }) => {
       const { x, y, attackerId } = payload;
-      
+
       // I process the shot on my board
       const store = useGameStore.getState();
       const result = store.receiveEnemyShot(x, y);
@@ -108,7 +107,7 @@ export function useSupabaseRoom(roomId?: string) {
             opponentBoard: store.myBoard // Reveal my board
           }
         });
-        store.onGameOver(attackerId, null); // I lost
+        store.onGameOver(attackerId, undefined); // I lost
       }
     });
 
@@ -150,11 +149,12 @@ export function useSupabaseRoom(roomId?: string) {
   return {
     createRoom: () => {
       const id = generateRoomId();
-      // Router navigation is handled by the component using this hook
+      useLobbyStore.getState().setRoomId(id);
       return id;
     },
     joinRoom: (id: string) => {
-      return id; // Return to component to handle router.push
+      useLobbyStore.getState().setRoomId(id);
+      return id;
     },
     playerReady: () => {
       const channel = channelRef.current;
@@ -164,7 +164,7 @@ export function useSupabaseRoom(roomId?: string) {
           event: 'player_ready',
           payload: { userId: myUserId }
         });
-        
+
         // Also check if opponent is already ready to start the game
         const store = useGameStore.getState();
         if (store.opponentReady) {
@@ -173,7 +173,7 @@ export function useSupabaseRoom(roomId?: string) {
           const state = channel.presenceState();
           const players = Object.keys(state);
           const opponentId = players.find(id => id !== myUserId) || 'opponent';
-          
+
           const sortedIds = [myUserId, opponentId].sort();
           const firstTurnId = sortedIds[0];
           store.onGameStart(firstTurnId);

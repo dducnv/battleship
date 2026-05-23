@@ -12,8 +12,8 @@ import { useEffect } from 'react';
 
 export default function LobbyPage() {
   const router = useRouter();
-  const { createRoom, joinRoom } = useSupabaseRoom();
   const roomId = useLobbyStore(s => s.roomId);
+  const { createRoom, joinRoom } = useSupabaseRoom(roomId || undefined);
   const isJoining = useLobbyStore(s => s.isJoining);
   const error = useLobbyStore(s => s.error);
   const totalPlayers = useLobbyStore(s => s.totalPlayers);

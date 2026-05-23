@@ -28,8 +28,8 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
     }
   }, [error, router]);
 
-  const handleReady = (board: number[][], shipsPlaced: unknown[]) => {
-    playerReady(board, shipsPlaced);
+  const handleReady = () => {
+    playerReady();
   };
 
   const handleRestart = () => {

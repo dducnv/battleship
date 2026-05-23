@@ -80,10 +80,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser. To test the
 
 Special thanks to the creators on **OpenGameArt.org** for the amazing assets:
 
-- **Battle Theme:** [Battle Theme A](https://opengameart.org/content/battle-theme-a) by **remy_sharma**.
-- **Sound Effects:** [Sci-Fi Sound Effects Library](https://opengameart.org/content/sci-fi-sound-effects-library) by **LittleRobotSoundFactory** and [Big Explosion](https://opengameart.org/content/big-explosion) by **strizis**.
-- **Ship Sunk SFX:** `DeathFlash.flac`.
-- **Ship Assets:** [Sea Warfare Set](https://opengameart.org/content/sea-warfare-set-ships-and-more) by **Skorpio**.
+- **Battle Theme:** [Battle Theme A](https://opengameart.org/content/battle-theme-a) by **cynicmusic**.
+- **Sound Effects:** [Sci-Fi Sound Effects Library](https://opengameart.org/content/sci-fi-sound-effects-library) by **LittleRobotSoundFactory**.
+- **Ship Sunk SFX:** [Big Explosion](https://opengameart.org/content/big-explosion) by **Blender Foundation** and `DeathFlash.flac`.
+- **Ship Assets:** [Sea Warfare Set](https://opengameart.org/content/sea-warfare-set-ships-and-more) by **Lowder2**.
 
 ---
 

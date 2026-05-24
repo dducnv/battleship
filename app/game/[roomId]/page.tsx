@@ -58,6 +58,10 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
       if (lastShotResult.isHit) {
         setTimeout(() => playSound('explosion'), 300);
         
+        // Trigger screen shake
+        document.body.classList.add('screen-shake');
+        setTimeout(() => document.body.classList.remove('screen-shake'), 400);
+
         // If the ship was sunk, play the death flash sound
         if (lastShotResult.isSunk) {
           setTimeout(() => playSound('sunk'), 800);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LogIn } from 'lucide-react';
+import { LogIn, Target } from 'lucide-react';
 
 interface JoinRoomProps {
   onJoin: (roomId: string) => void;
@@ -43,7 +43,7 @@ export default function JoinRoom({ onJoin, isJoining, error }: JoinRoomProps) {
           type="submit"
           disabled={!inputValue.trim() || isJoining}
         >
-          {isJoining ? 'Joining...' : '🎯 Join Match'}
+          {isJoining ? 'Joining...' : <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Target size={20} /> Join Match</span>}
         </button>
       </form>
 

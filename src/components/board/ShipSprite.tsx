@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { SHIPS } from '../../game/constants';
 import type { PlacedShip } from '../../game/types';
 import { useGameStore } from '../../store/game-store';
+import { RefreshCw, X } from 'lucide-react';
 
 interface ShipSpriteProps {
   ship: PlacedShip;
@@ -106,7 +107,7 @@ export default function ShipSprite({ ship, interactive = false }: ShipSpriteProp
             }}
             title="Rotate Ship (Double-click)"
           >
-            🔄
+            <RefreshCw size={14} />
           </button>
           <button
             className="ship-sprite__btn ship-sprite__btn--remove"
@@ -116,7 +117,7 @@ export default function ShipSprite({ ship, interactive = false }: ShipSpriteProp
             }}
             title="Remove Ship"
           >
-            ❌
+            <X size={14} />
           </button>
         </div>
       )}

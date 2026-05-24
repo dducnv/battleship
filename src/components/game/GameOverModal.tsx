@@ -2,6 +2,7 @@
 
 import { useGameStore } from '../../store/game-store';
 import { useWinner } from '../../hooks/useGameState';
+import { Trophy, Skull, RefreshCw, LogOut } from 'lucide-react';
 
 interface GameOverModalProps {
   onRestart: () => void;
@@ -19,7 +20,7 @@ export default function GameOverModal({ onRestart, onLeave }: GameOverModalProps
     <div className="modal-overlay">
       <div className={`modal game-over-modal ${isVictory ? 'game-over-modal--victory' : 'game-over-modal--defeat'}`}>
         <div className="game-over-modal__icon">
-          {isVictory ? '🏆' : '💀'}
+          {isVictory ? <Trophy size={64} /> : <Skull size={64} />}
         </div>
         <h2 className="game-over-modal__title">
           {isVictory ? 'VICTORY!' : 'DEFEAT'}
@@ -32,10 +33,10 @@ export default function GameOverModal({ onRestart, onLeave }: GameOverModalProps
 
         <div className="game-over-modal__actions">
           <button className="btn btn--primary" onClick={onRestart}>
-            🔄 Rematch
+            <RefreshCw size={20} /> Rematch
           </button>
           <button className="btn btn--secondary" onClick={onLeave}>
-            🚪 Leave
+            <LogOut size={20} /> Leave
           </button>
         </div>
       </div>

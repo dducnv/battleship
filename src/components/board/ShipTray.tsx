@@ -2,6 +2,7 @@
 
 import { SHIPS } from '../../game/constants';
 import { useGameStore } from '../../store/game-store';
+import { Check, RefreshCw, Dices } from 'lucide-react';
 
 /**
  * Ship selection tray for placement phase.
@@ -67,7 +68,7 @@ export default function ShipTray() {
                 <span className="ship-tray__name">{ship.name}</span>
                 <span className="ship-tray__length">{ship.length} cells</span>
               </div>
-              {isPlaced && <span className="ship-tray__check">✓</span>}
+              {isPlaced && <span className="ship-tray__check"><Check size={16} /></span>}
             </div>
           );
         })}
@@ -79,13 +80,13 @@ export default function ShipTray() {
           onClick={toggleOrientation}
           title="Press R to rotate"
         >
-          🔄 {isHorizontal ? 'Horizontal' : 'Vertical'}
+          <RefreshCw size={16} /> {isHorizontal ? 'Horizontal' : 'Vertical'}
         </button>
         <button
           className="btn btn--secondary"
           onClick={autoPlace}
         >
-          🎲 Auto Place
+          <Dices size={16} /> Auto Place
         </button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useGameStore } from '../../store/game-store';
+import { Target, Circle } from 'lucide-react';
 
 export default function TurnIndicator() {
   const isMyTurn = useGameStore(s => s.isMyTurn);
@@ -17,8 +18,11 @@ export default function TurnIndicator() {
 
       {lastShotResult && (
         <div className={`turn-indicator__last-shot ${lastShotResult.isHit ? 'turn-indicator__last-shot--hit' : 'turn-indicator__last-shot--miss'}`}>
-          {lastShotResult.isHit ? '🔴 HIT!' : '⚪ Miss'}
-          {lastShotResult.isSunk && ` — ${lastShotResult.sunkShipId} sunk!`}
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {lastShotResult.isHit ? <Target size={16} /> : <Circle size={16} />}
+            {lastShotResult.isHit ? 'HIT!' : 'Miss'}
+            {lastShotResult.isSunk && ` — ${lastShotResult.sunkShipId} sunk!`}
+          </span>
         </div>
       )}
     </div>

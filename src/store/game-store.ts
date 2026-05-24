@@ -28,7 +28,11 @@ interface GameStore {
   opponentReady: boolean;
   opponentId: string | null;
   myReady: boolean;
+  isSpectator: boolean;
 
+  // ── Actions ──
+  setSpectator: (isSpectator: boolean) => void;
+  
   // ── Placement Actions ──
   selectShip: (shipId: string | null) => void;
   toggleOrientation: () => void;
@@ -73,10 +77,13 @@ const createInitialState = () => ({
   opponentReady: false,
   opponentId: null as string | null,
   myReady: false,
+  isSpectator: false,
 });
 
 export const useGameStore = create<GameStore>((set, get) => ({
   ...createInitialState(),
+
+  setSpectator: (isSpectator) => set({ isSpectator }),
 
   // ── Placement ──
 
@@ -210,7 +217,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   onShotResult: (result) => {
-    const { mySocketId, trackingBoard, myBoard } = get();
+    const { mySocketId, trackingBoard } = get();
     const isIWasAttacker = result.attackerId === mySocketId;
 
     if (isIWasAttacker) {

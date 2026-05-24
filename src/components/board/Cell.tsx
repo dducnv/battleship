@@ -1,6 +1,7 @@
 'use client';
 
 import { CellState } from '../../game/constants';
+import { X, Circle } from 'lucide-react';
 
 interface CellProps {
   state: number;
@@ -33,7 +34,7 @@ export default function Cell({
 
   // Determine cell appearance
   let cellClass = 'cell';
-  let content = '';
+  let content: React.ReactNode = null;
 
   switch (state) {
     case CellState.Empty:
@@ -44,11 +45,11 @@ export default function Cell({
       break;
     case CellState.Miss:
       cellClass += ' cell--miss';
-      content = '•';
+      content = <Circle size={12} fill="currentColor" />;
       break;
     case CellState.Hit:
       cellClass += ' cell--hit';
-      content = '✕';
+      content = <X size={24} strokeWidth={3} />;
       break;
   }
 

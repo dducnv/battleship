@@ -5,7 +5,6 @@ import { supabase, myUserId } from '../supabase/client';
 import { useGameStore } from '../store/game-store';
 import { useLobbyStore } from '../store/lobby-store';
 
-// Let's implement nanoid locally
 function generateRoomId() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
@@ -13,26 +12,26 @@ function generateRoomId() {
 let globalChannel: ReturnType<typeof supabase.channel> | null = null;
 let activeRoomId: string | null = null;
 
-/**
- * Hook that manages Supabase Realtime channel lifecycle and P2P game logic.
- */
 export function useSupabaseRoom(roomId?: string) {
-  const hasInitialized = useRef(false);
+  const attemptStart = () => {
+    const store = useGameStore.getState();
+    if (store.phase !== 'placing' || !store.myReady || !store.opponentReady) return;
+
+    const players = Object.keys(globalChannel?.presenceState() || {}).sort();
+    if (players.length >= 2) {
+      store.onGameStart(players[0]);
+    }
+  };
 
   useEffect(() => {
     if (!roomId) return;
-    if (activeRoomId === roomId && globalChannel) {
-      // Already connected or connecting to this room globally
-      return;
-    }
+    if (activeRoomId === roomId && globalChannel) return;
 
     if (globalChannel) {
       globalChannel.unsubscribe();
     }
 
     activeRoomId = roomId;
-    hasInitialized.current = true;
-
     const gameStore = useGameStore.getState();
     const lobbyStore = useLobbyStore.getState();
 
@@ -47,153 +46,99 @@ export function useSupabaseRoom(roomId?: string) {
     });
     globalChannel = channel;
 
-    // ── Presence (Player Join/Leave & Ready Sync) ──
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
-      const playersInRoom = Object.keys(state);
-      const allPresence = Object.values(state).flat() as unknown as { userId: string; ready?: boolean }[];
+      const playersInRoom = Object.keys(state).sort();
+      const allPresence = Object.values(state).flat() as any[];
 
       lobbyStore.setConnected(true);
       lobbyStore.setJoining(false);
       lobbyStore.setTotalPlayers(playersInRoom.length);
 
-      // If 2 players are here and we are in waiting phase, start placement
-      if (playersInRoom.length === 2 && useGameStore.getState().phase === 'waiting') {
-        useGameStore.getState().setPhase('placing');
+      const myIndex = playersInRoom.indexOf(myUserId);
+      gameStore.setSpectator(myIndex >= 2);
+
+      if (playersInRoom.length >= 2 && gameStore.phase === 'waiting') {
+        gameStore.setPhase('placing');
       }
 
-      // Check if opponent is ready via presence
-      const opponent = allPresence.find(p => p.userId !== myUserId);
-      if (opponent && opponent.ready === true) {
-        useGameStore.getState().onOpponentReady(opponent.userId);
+      const opponentId = playersInRoom.find(id => id !== myUserId && playersInRoom.indexOf(id) < 2);
+      const opponentPresence = allPresence.find(p => p.userId === opponentId);
+      if (opponentPresence?.ready) {
+        gameStore.onOpponentReady(opponentId);
       }
 
-      // Check if BOTH players in room are ready, start the game
-      const isIReady = useGameStore.getState().myReady;
-      const isOpponentReady = opponent?.ready === true;
+      attemptStart();
 
-      if (playersInRoom.length === 2 && isIReady && isOpponentReady) {
-        const myState = useGameStore.getState();
-        if (myState.phase === 'placing') {
-          // Sort userIds deterministically to decide who goes first in P2P
-          const sortedIds = allPresence.map(p => p.userId).sort();
-          const firstTurnId = sortedIds[0];
-          myState.onGameStart(firstTurnId);
-        }
-      }
-
-      // If opponent left during playing
-      if (playersInRoom.length < 2 && useGameStore.getState().phase !== 'waiting') {
+      if (playersInRoom.length < 2 && gameStore.phase === 'playing') {
         lobbyStore.setError('Opponent disconnected');
-        useGameStore.getState().reset();
+        gameStore.reset();
       }
     });
 
-    // ── Broadcast Events (P2P Gameplay) ──
-
-    // 1. Opponent is ready with their board
     channel.on('broadcast', { event: 'player_ready' }, ({ payload }) => {
-      useGameStore.getState().onOpponentReady(payload.userId);
-
-      // If I am also ready, we should start the game.
-      // To decide who goes first in P2P without server, we can sort userIds
-      const myState = useGameStore.getState();
-      if (myState.phase === 'placing' && myState.myReady) {
-        const sortedIds = [myUserId, payload.userId].sort();
-        const firstTurnId = sortedIds[0];
-        myState.onGameStart(firstTurnId);
+      if (payload.userId !== myUserId) {
+        gameStore.onOpponentReady(payload.userId);
+        attemptStart();
       }
     });
 
-    // 2. Opponent fired a shot at my board
     channel.on('broadcast', { event: 'fire_shot' }, ({ payload }) => {
       const { x, y, attackerId } = payload;
-
-      // I process the shot on my board
       const store = useGameStore.getState();
+      if (store.isSpectator) return;
+
       const result = store.receiveEnemyShot(x, y);
+      if (!result) return;
 
-      if (!result) return; // Invalid shot (already shot or out of bounds)
-
-      // If it's a hit, attacker keeps turn. If miss, turn passes to me.
       const nextTurnId = result.isHit ? attackerId : myUserId;
+      const shotResult = { ...result, attackerId, x, y, nextTurnId };
 
-      const shotResult = {
-        ...result,
-        attackerId,
-        x,
-        y,
-        nextTurnId,
-      };
-
-      // I broadcast the result back
-      channel.send({
-        type: 'broadcast',
-        event: 'shot_result',
-        payload: shotResult
-      });
-
-      // Update my own store locally as the defender
+      channel.send({ type: 'broadcast', event: 'shot_result', payload: shotResult });
       store.onShotResult(shotResult);
 
-      // If that shot ended the game (all my ships sunk)
       if (result.isGameOver) {
         channel.send({
           type: 'broadcast',
           event: 'game_over',
-          payload: {
-            winnerId: attackerId,
-            opponentBoard: store.myBoard // Reveal my board
-          }
+          payload: { winnerId: attackerId, opponentBoard: store.myBoard }
         });
-        store.onGameOver(attackerId, undefined); // I lost
+        store.onGameOver(attackerId, undefined);
       }
     });
 
-    // 3. I receive the result of the shot I fired
     channel.on('broadcast', { event: 'shot_result' }, ({ payload }) => {
-      if (payload.attackerId === myUserId) {
-        useGameStore.getState().onShotResult(payload);
-      }
+      useGameStore.getState().onShotResult(payload);
     });
 
-    // 4. Game Over event received (Opponent lost and revealed board)
     channel.on('broadcast', { event: 'game_over' }, ({ payload }) => {
       useGameStore.getState().onGameOver(payload.winnerId, payload.opponentBoard);
     });
 
-    // 5. Restart requested
     channel.on('broadcast', { event: 'request_restart' }, () => {
-      // Reset presence track to not ready
-      if (globalChannel) {
-        globalChannel.track({ ready: false, userId: myUserId });
-      }
-      useGameStore.getState().reset();
-      useGameStore.getState().setPhase('placing');
-      useGameStore.getState().setMySocketId(myUserId);
+      channel.track({ ready: false, userId: myUserId });
+      gameStore.reset();
+      gameStore.setPhase('placing');
+      gameStore.setMySocketId(myUserId);
     });
 
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-        // Use setTimeout to avoid 'falling back to REST API' race condition
         setTimeout(() => {
-          if (globalChannel?.state === 'joined') {
-            globalChannel.track({ ready: false, userId: myUserId });
+          if (channel.state === 'joined') {
+            channel.track({ ready: false, userId: myUserId });
           }
         }, 100);
       } else if (status === 'CLOSED') {
         lobbyStore.setConnected(false);
       } else if (status === 'CHANNEL_ERROR') {
-        lobbyStore.setError('Failed to connect to room');
+        lobbyStore.setError('Failed to connect');
       }
     });
 
-    return () => {
-      // Intentionally empty: keep channel alive across page navigations
-    };
+    return () => {};
   }, [roomId]);
 
-  // Return emit helpers
   return {
     createRoom: () => {
       const id = generateRoomId();
@@ -209,58 +154,22 @@ export function useSupabaseRoom(roomId?: string) {
       if (channel) {
         const store = useGameStore.getState();
         store.setMyReady(true);
-
-        const sendReady = () => {
-          channel.track({ ready: true, userId: myUserId });
-          channel.send({
-            type: 'broadcast',
-            event: 'player_ready',
-            payload: { userId: myUserId }
-          });
-        };
-
-        if (channel.state !== 'joined') {
-          // If disconnected due to HMR or network, wait a bit
-          setTimeout(sendReady, 500);
-        } else {
-          sendReady();
-        }
-
-        // Also check if opponent is already ready to start the game
-        if (store.opponentReady) {
-          const state = channel.presenceState();
-          const players = Object.keys(state);
-          const presenceOpponentId = players.find(id => id !== myUserId);
-          const opponentId = store.opponentId || presenceOpponentId || 'opponent';
-
-          const sortedIds = [myUserId, opponentId].sort();
-          const firstTurnId = sortedIds[0];
-          store.onGameStart(firstTurnId);
-        }
+        channel.track({ ready: true, userId: myUserId });
+        channel.send({ type: 'broadcast', event: 'player_ready', payload: { userId: myUserId } });
+        attemptStart();
       }
     },
     fireShot: (x: number, y: number) => {
       const channel = globalChannel;
       if (channel && channel.state === 'joined') {
-        channel.send({
-          type: 'broadcast',
-          event: 'fire_shot',
-          payload: { attackerId: myUserId, x, y }
-        });
+        channel.send({ type: 'broadcast', event: 'fire_shot', payload: { attackerId: myUserId, x, y } });
       }
     },
     requestRestart: () => {
       const channel = globalChannel;
       if (channel) {
-        // Reset presence track to not ready
         channel.track({ ready: false, userId: myUserId });
-
-        channel.send({
-          type: 'broadcast',
-          event: 'request_restart',
-          payload: {}
-        });
-        // Also reset my own
+        channel.send({ type: 'broadcast', event: 'request_restart', payload: {} });
         useGameStore.getState().reset();
         useGameStore.getState().setPhase('placing');
         useGameStore.getState().setMySocketId(myUserId);

@@ -28,7 +28,7 @@ export default function CreateRoom({ roomId, onCreate }: CreateRoomProps) {
 
       {!roomId ? (
         <button className="btn btn--primary btn--lg" onClick={onCreate}>
-          ⚓ Generate Room
+          <Anchor size={20} /> Generate Room
         </button>
       ) : (
         <div className="lobby-card__room-id">

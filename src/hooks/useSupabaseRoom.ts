@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect } from 'react';
-import { supabase, myUserId } from '../supabase/client';
+import { supabase, myUserId, joinedAt, myUserName } from '../supabase/client';
 import { useGameStore } from '../store/game-store';
 import { useLobbyStore } from '../store/lobby-store';
 
 interface PresenceState {
   userId: string;
+  userName: string;
   ready: boolean;
-  [key: string]: unknown;
+  joinedAt: number;
 }
 
 function generateRoomId() {
@@ -18,6 +19,13 @@ function generateRoomId() {
 let globalChannel: ReturnType<typeof supabase.channel> | null = null;
 let activeRoomId: string | null = null;
 
+const getSortedPlayers = (presenceState: Record<string, any>) => {
+  return Object.values(presenceState)
+    .flat()
+    .sort((a: any, b: any) => (a.joinedAt || 0) - (b.joinedAt || 0))
+    .map((p: any) => p.userId);
+};
+
 export function useSupabaseRoom(roomId?: string) {
   const attemptStart = () => {
     const store = useGameStore.getState();
@@ -26,7 +34,7 @@ export function useSupabaseRoom(roomId?: string) {
     const presence = globalChannel?.presenceState();
     if (!presence) return;
 
-    const players = Object.keys(presence).sort();
+    const players = getSortedPlayers(presence);
     if (players.length >= 2) {
       store.onGameStart(players[0]);
     }
@@ -64,9 +72,15 @@ export function useSupabaseRoom(roomId?: string) {
 
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
-      const playersInRoom = Object.keys(state).sort();
+      const playersInRoom = getSortedPlayers(state);
       const allPresence = Object.values(state).reduce((acc: PresenceState[], val) => 
         acc.concat(val as unknown as PresenceState[]), []) as PresenceState[];
+
+      const nameMap: Record<string, string> = {};
+      allPresence.forEach(p => {
+        nameMap[p.userId] = p.userName;
+      });
+      gameStore.syncState({ playerNames: nameMap });
 
       lobbyStore.setConnected(true);
       lobbyStore.setJoining(false);
@@ -87,9 +101,9 @@ export function useSupabaseRoom(roomId?: string) {
       }
 
       const opponentId = playersInRoom.find(id => id !== myUserId && playersInRoom.indexOf(id) < 2);
-      const opponentPresence = allPresence.find(p => p.userId === opponentId);
+      const opponentPresence = allPresence.find(p => p.userId === (opponentId || ''));
       if (opponentPresence?.ready) {
-        gameStore.onOpponentReady(opponentId);
+        gameStore.onOpponentReady(opponentId || undefined);
       }
 
       attemptStart();
@@ -148,7 +162,8 @@ export function useSupabaseRoom(roomId?: string) {
     });
 
     channel.on('broadcast', { event: 'request_restart' }, () => {
-      channel.track({ ready: false, userId: myUserId });
+      const currentUserName = useLobbyStore.getState().userName || myUserName;
+      channel.track({ ready: false, userId: myUserId, userName: currentUserName, joinedAt });
       gameStore.reset();
       gameStore.setPhase('placing');
       gameStore.setMySocketId(myUserId);
@@ -156,16 +171,18 @@ export function useSupabaseRoom(roomId?: string) {
 
     channel.on('broadcast', { event: 'request_sync' }, () => {
       const state = channel.presenceState();
-      const players = Object.keys(state).sort();
-      if (players[0] === myUserId) {
+      const players = getSortedPlayers(state);
+      const myIndex = players.indexOf(myUserId);
+      
+      if (myIndex === 0 || myIndex === 1) {
         const store = useGameStore.getState();
         channel.send({
           type: 'broadcast',
           event: 'sync_state',
           payload: {
             phase: store.phase,
-            player1Board: store.myBoard,
-            player2Board: store.trackingBoard,
+            [myIndex === 0 ? 'player1Board' : 'player2Board']: store.myBoard,
+            [myIndex === 0 ? 'player1Ships' : 'player2Ships']: store.myShips,
             activeTurnId: store.activeTurnId,
           }
         });
@@ -175,14 +192,13 @@ export function useSupabaseRoom(roomId?: string) {
     channel.on('broadcast', { event: 'sync_state' }, (event) => {
       const store = useGameStore.getState();
       if (store.isSpectator && event.payload) {
-        const { phase, player1Board, player2Board, activeTurnId } = event.payload;
-        store.syncState({
-          phase,
-          myBoard: player1Board,
-          trackingBoard: player2Board,
-          activeTurnId,
-          isMyTurn: false,
-        });
+        const { phase, player1Board, player2Board, player1Ships, player2Ships, activeTurnId } = event.payload;
+        const updates: any = { phase, activeTurnId, isMyTurn: false };
+        if (player1Board) updates.myBoard = player1Board;
+        if (player2Board) updates.trackingBoard = player2Board;
+        if (player1Ships) updates.myShips = player1Ships;
+        if (player2Ships) updates.opponentShips = player2Ships; // We might need a new field for P2 ships in store
+        store.syncState(updates);
       }
     });
 
@@ -190,7 +206,8 @@ export function useSupabaseRoom(roomId?: string) {
       console.log(`[Room] Subscription status: ${status}`);
       if (status === 'SUBSCRIBED') {
         lobbyStore.setConnected(true);
-        channel.track({ ready: false, userId: myUserId });
+        const currentUserName = lobbyStore.userName || myUserName;
+        channel.track({ ready: false, userId: myUserId, userName: currentUserName, joinedAt });
       } else if (status === 'CLOSED') {
         lobbyStore.setConnected(false);
       } else if (status === 'CHANNEL_ERROR') {
@@ -216,8 +233,10 @@ export function useSupabaseRoom(roomId?: string) {
       const channel = globalChannel;
       if (channel) {
         const store = useGameStore.getState();
+        const lobbyStore = useLobbyStore.getState();
+        const currentUserName = lobbyStore.userName || myUserName;
         store.setMyReady(true);
-        channel.track({ ready: true, userId: myUserId });
+        channel.track({ ready: true, userId: myUserId, userName: currentUserName, joinedAt });
         channel.send({ type: 'broadcast', event: 'player_ready', payload: { userId: myUserId } });
         attemptStart();
       }
@@ -231,7 +250,9 @@ export function useSupabaseRoom(roomId?: string) {
     requestRestart: () => {
       const channel = globalChannel;
       if (channel) {
-        channel.track({ ready: false, userId: myUserId });
+        const lobbyStore = useLobbyStore.getState();
+        const currentUserName = lobbyStore.userName || myUserName;
+        channel.track({ ready: false, userId: myUserId, userName: currentUserName, joinedAt });
         channel.send({ type: 'broadcast', event: 'request_restart', payload: {} });
         useGameStore.getState().reset();
         useGameStore.getState().setPhase('placing');

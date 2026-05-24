@@ -7,8 +7,9 @@ import { useGameStore } from '../src/store/game-store';
 import CreateRoom from '../src/components/lobby/CreateRoom';
 import JoinRoom from '../src/components/lobby/JoinRoom';
 import StatusBar from '../src/components/shared/StatusBar';
-import { Crosshair } from 'lucide-react';
+import { Crosshair, User } from 'lucide-react';
 import { useEffect } from 'react';
+import { myUserName } from '../src/supabase/client';
 
 export default function LobbyPage() {
   const router = useRouter();
@@ -18,6 +19,21 @@ export default function LobbyPage() {
   const error = useLobbyStore(s => s.error);
   const totalPlayers = useLobbyStore(s => s.totalPlayers);
   const phase = useGameStore(s => s.phase);
+  const userName = useLobbyStore(s => s.userName);
+  const setUserName = useLobbyStore(s => s.setUserName);
+
+  // Initialize user name from session storage or default
+  useEffect(() => {
+    if (!userName) {
+      setUserName(myUserName);
+    }
+  }, [userName, setUserName]);
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setUserName(newName);
+    sessionStorage.setItem('battleship_name', newName);
+  };
 
   // Navigate to game room when placement starts
   useEffect(() => {
@@ -36,6 +52,23 @@ export default function LobbyPage() {
         </div>
         <h1 className="lobby-header__title">Battleship P2P</h1>
         <p className="lobby-header__subtitle">The ultimate real-time naval combat experience. No login, no hassle—just pure strategy.</p>
+      </div>
+
+      <div className="lobby-name-input">
+        <div className="input-group">
+          <label htmlFor="user-name">Your Callsign</label>
+          <div className="input-with-icon">
+            <User size={20} className="input-icon" />
+            <input
+              id="user-name"
+              type="text"
+              value={userName}
+              onChange={handleNameChange}
+              placeholder="Enter your name..."
+              maxLength={20}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="lobby-cards">

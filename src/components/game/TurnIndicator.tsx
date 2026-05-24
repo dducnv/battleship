@@ -8,14 +8,16 @@ export default function TurnIndicator() {
   const isSpectator = useGameStore(s => s.isSpectator);
   const activeTurnId = useGameStore(s => s.activeTurnId);
   const playerIds = useGameStore(s => s.playerIds);
+  const playerNames = useGameStore(s => s.playerNames);
   const lastShotResult = useGameStore(s => s.lastShotResult);
 
   const getTurnText = () => {
+    const activePlayerName = activeTurnId ? playerNames[activeTurnId] : null;
+
     if (isSpectator) {
-      const playerIndex = playerIds.indexOf(activeTurnId || '');
-      return playerIndex !== -1 ? `Player ${playerIndex + 1}'s Turn` : 'Waiting for turn...';
+      return activePlayerName ? `${activePlayerName}'s Turn` : 'Waiting for turn...';
     }
-    return isMyTurn ? 'Your Turn — Fire!' : 'Enemy is aiming...';
+    return isMyTurn ? 'Your Turn — Fire!' : `${activePlayerName || 'Enemy'} is aiming...`;
   };
 
   const isActive = isSpectator ? !!activeTurnId : isMyTurn;

@@ -15,15 +15,23 @@ export default function BattleView({ onFireShot }: BattleViewProps) {
   const myBoard = useGameStore(s => s.myBoard);
   const myShips = useGameStore(s => s.myShips);
   const trackingBoard = useGameStore(s => s.trackingBoard);
+  const opponentShips = useGameStore(s => s.opponentShips);
   const isMyTurn = useGameStore(s => s.isMyTurn);
   const isSpectator = useGameStore(s => s.isSpectator);
   const lastEnemyShot = useGameStore(s => s.lastEnemyShot);
   const consecutiveHits = useGameStore(s => s.consecutiveHits);
   const airStrikeUsed = useGameStore(s => s.airStrikeUsed);
   const setAirStrikeUsed = useGameStore(s => s.setAirStrikeUsed);
+  const playerIds = useGameStore(s => s.playerIds);
+  const playerNames = useGameStore(s => s.playerNames);
 
   const [showCombo, setShowCombo] = useState(false);
   const [displayCombo, setDisplayCombo] = useState(0);
+
+  const getPlayerName = (index: number) => {
+    const id = playerIds[index];
+    return id && playerNames[id] ? playerNames[id] : `Player ${index + 1}`;
+  };
 
   useEffect(() => {
     if (consecutiveHits >= 3) {
@@ -85,7 +93,7 @@ export default function BattleView({ onFireShot }: BattleViewProps) {
             isOwn={true}
             ships={myShips}
             disabled={true}
-            label={isSpectator ? "Player 1" : "Your Waters"}
+            label={isSpectator ? getPlayerName(0) : "Your Waters"}
             lastMove={lastEnemyShot}
           />
 
@@ -104,10 +112,11 @@ export default function BattleView({ onFireShot }: BattleViewProps) {
 
           <Grid
             board={trackingBoard}
-            isOwn={false}
+            isOwn={isSpectator}
+            ships={isSpectator ? opponentShips : []}
             disabled={!isMyTurn || isSpectator}
             onClick={handleTrackingClick}
-            label={isSpectator ? "Player 2" : "Enemy Waters"}
+            label={isSpectator ? getPlayerName(1) : "Enemy Waters"}
           />
         </div>
       </div>

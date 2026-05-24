@@ -26,7 +26,14 @@ export function useTrackingBoard() {
 export function useWinner() {
   const winnerId = useGameStore(s => s.winnerId);
   const mySocketId = useGameStore(s => s.mySocketId);
+  const isSpectator = useGameStore(s => s.isSpectator);
+  const playerNames = useGameStore(s => s.playerNames);
+
   if (!winnerId) return null;
+  if (isSpectator) {
+    const winnerName = playerNames[winnerId];
+    return winnerName ? `${winnerName} Wins!` : 'Game Over';
+  }
   return winnerId === mySocketId ? 'victory' : 'defeat';
 }
 

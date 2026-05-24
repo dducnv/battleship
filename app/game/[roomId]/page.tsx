@@ -73,13 +73,15 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
 
   useEffect(() => {
     if (phase === 'ended') {
-      if (winnerId === mySocketId) {
+      if (isSpectator) {
+        playSound('win');
+      } else if (winnerId === mySocketId) {
         playSound('win');
       } else {
         playSound('lose');
       }
     }
-  }, [phase, winnerId, mySocketId, playSound]);
+  }, [phase, winnerId, mySocketId, playSound, isSpectator]);
 
   const handleReady = () => {
     playerReady();

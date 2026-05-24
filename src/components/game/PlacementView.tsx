@@ -23,6 +23,8 @@ export default function PlacementView({ onReady }: PlacementViewProps) {
   const opponentReady = useGameStore(s => s.opponentReady);
   const myReady = useGameStore(s => s.myReady);
   const isSpectator = useGameStore(s => s.isSpectator);
+  const playerIds = useGameStore(s => s.playerIds);
+  const playerNames = useGameStore(s => s.playerNames);
 
   const [hoverPreview, setHoverPreview] = useState<{
     cells: Coordinate[];
@@ -75,6 +77,11 @@ export default function PlacementView({ onReady }: PlacementViewProps) {
     }
   };
 
+  const getPlayerName = (index: number) => {
+    const id = playerIds[index];
+    return id && playerNames[id] ? playerNames[id] : `Player ${index + 1}`;
+  };
+
   return (
     <div className="placement-view">
       <div className="placement-view__header">
@@ -97,7 +104,7 @@ export default function PlacementView({ onReady }: PlacementViewProps) {
           hoverPreview={hoverPreview}
           onCellHover={handleCellHover}
           onCellLeave={handleCellLeave}
-          label="Your Waters"
+          label={isSpectator ? `${getPlayerName(0)}'s Fleet` : "Your Waters"}
           interactive={true}
         />
         <ShipTray />

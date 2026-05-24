@@ -14,20 +14,24 @@ export default function GameOverModal({ onRestart, onLeave }: GameOverModalProps
   if (!result) return null;
 
   const isVictory = result === 'victory';
+  const isDefeat = result === 'defeat';
+  const isSpectatorResult = !isVictory && !isDefeat;
 
   return (
     <div className="modal-overlay">
-      <div className={`modal game-over-modal ${isVictory ? 'game-over-modal--victory' : 'game-over-modal--defeat'}`}>
+      <div className={`modal game-over-modal ${isVictory || isSpectatorResult ? 'game-over-modal--victory' : 'game-over-modal--defeat'}`}>
         <div className="game-over-modal__icon">
-          {isVictory ? <Trophy size={64} /> : <Skull size={64} />}
+          {isVictory || isSpectatorResult ? <Trophy size={64} /> : <Skull size={64} />}
         </div>
         <h2 className="game-over-modal__title">
-          {isVictory ? 'VICTORY!' : 'DEFEAT'}
+          {isSpectatorResult ? result : isVictory ? 'VICTORY!' : 'DEFEAT'}
         </h2>
         <p className="game-over-modal__subtitle">
-          {isVictory
-            ? 'You sank all enemy ships!'
-            : 'Your fleet has been destroyed.'}
+          {isSpectatorResult
+            ? 'The battle has concluded.'
+            : isVictory
+              ? 'You sank all enemy ships!'
+              : 'Your fleet has been destroyed.'}
         </p>
 
         <div className="game-over-modal__actions">

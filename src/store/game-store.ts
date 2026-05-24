@@ -19,6 +19,7 @@ interface GameStore {
   myShips: PlacedShip[];
   trackingBoard: Board; // records my shots on enemy board
   opponentBoard: Board | null; // revealed at game end
+  opponentShips: PlacedShip[]; // revealed at game end or synced for spectators
   isMyTurn: boolean;
   winnerId: string | null;
   mySocketId: string | null;
@@ -30,6 +31,7 @@ interface GameStore {
   myReady: boolean;
   isSpectator: boolean;
   playerIds: string[];
+  playerNames: Record<string, string>;
   activeTurnId: string | null;
 
   // ── Stats & Enhancements ──
@@ -81,6 +83,7 @@ const createInitialState = () => ({
   myShips: [] as PlacedShip[],
   trackingBoard: createEmptyBoard(),
   opponentBoard: null as Board | null,
+  opponentShips: [] as PlacedShip[],
   isMyTurn: false,
   winnerId: null as string | null,
   mySocketId: null as string | null,
@@ -92,6 +95,7 @@ const createInitialState = () => ({
   myReady: false,
   isSpectator: false,
   playerIds: [] as string[],
+  playerNames: {} as Record<string, string>,
   activeTurnId: null as string | null,
   turnCount: 0,
   myHitCount: 0,

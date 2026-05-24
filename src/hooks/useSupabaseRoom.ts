@@ -23,7 +23,10 @@ export function useSupabaseRoom(roomId?: string) {
     const store = useGameStore.getState();
     if (store.phase !== 'placing' || !store.myReady || !store.opponentReady) return;
 
-    const players = Object.keys(globalChannel?.presenceState() || {}).sort();
+    const presence = globalChannel?.presenceState();
+    if (!presence) return;
+
+    const players = Object.keys(presence).sort();
     if (players.length >= 2) {
       store.onGameStart(players[0]);
     }
@@ -31,9 +34,14 @@ export function useSupabaseRoom(roomId?: string) {
 
   useEffect(() => {
     if (!roomId) return;
-    if (activeRoomId === roomId && globalChannel) return;
+    
+    // Check if we are already connected to this room
+    if (activeRoomId === roomId && globalChannel && globalChannel.state === 'joined') {
+      return;
+    }
 
     if (globalChannel) {
+      console.log('[Room] Cleaning up old connection');
       globalChannel.unsubscribe();
     }
 
@@ -45,6 +53,8 @@ export function useSupabaseRoom(roomId?: string) {
     lobbyStore.setJoining(true);
     gameStore.setMySocketId(myUserId);
 
+    console.log(`[Room] Connecting to: ${roomId}`);
+
     const channel = supabase.channel(`room:${roomId}`, {
       config: {
         presence: { key: myUserId },
@@ -55,7 +65,6 @@ export function useSupabaseRoom(roomId?: string) {
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
       const playersInRoom = Object.keys(state).sort();
-      // Use reduce instead of flat() for better browser compatibility
       const allPresence = Object.values(state).reduce((acc: PresenceState[], val) => 
         acc.concat(val as unknown as PresenceState[]), []) as PresenceState[];
 
@@ -156,15 +165,15 @@ export function useSupabaseRoom(roomId?: string) {
     });
 
     channel.subscribe((status) => {
+      console.log(`[Room] Subscription status: ${status}`);
       if (status === 'SUBSCRIBED') {
-        // Wait a small bit to ensure connection is stable before tracking
-        setTimeout(() => {
-          channel.track({ ready: false, userId: myUserId });
-        }, 100);
+        lobbyStore.setConnected(true);
+        channel.track({ ready: false, userId: myUserId });
       } else if (status === 'CLOSED') {
         lobbyStore.setConnected(false);
       } else if (status === 'CHANNEL_ERROR') {
-        lobbyStore.setError('Failed to connect. Make sure Supabase Realtime is enabled in your project settings.');
+        lobbyStore.setError('Connection error. Please refresh or check your network.');
+        console.error('[Room] Subscription error');
       }
     });
 

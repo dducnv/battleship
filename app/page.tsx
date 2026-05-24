@@ -62,6 +62,7 @@ export default function LobbyPage() {
             <input
               id="user-name"
               type="text"
+              className="input"
               value={userName}
               onChange={handleNameChange}
               placeholder="Enter your name..."

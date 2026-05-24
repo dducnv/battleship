@@ -20,13 +20,20 @@ let globalChannel: ReturnType<typeof supabase.channel> | null = null;
 let activeRoomId: string | null = null;
 
 const getSortedPlayers = (presenceState: Record<string, any>) => {
-  return Object.values(presenceState)
+  const sorted = Object.values(presenceState)
     .flat()
     .sort((a: any, b: any) => 
       (a.joinedAt || 0) - (b.joinedAt || 0) || 
       (a.userId || '').localeCompare(b.userId || '')
-    )
-    .map((p: any) => p.userId);
+    );
+  
+  // Use a Set to ensure unique user IDs while preserving the sorted order of their first appearance
+  const uniqueIds = new Set<string>();
+  sorted.forEach(p => {
+    if (p.userId) uniqueIds.add(p.userId);
+  });
+  
+  return Array.from(uniqueIds);
 };
 
 export function useSupabaseRoom(roomId?: string) {

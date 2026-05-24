@@ -22,7 +22,10 @@ let activeRoomId: string | null = null;
 const getSortedPlayers = (presenceState: Record<string, any>) => {
   return Object.values(presenceState)
     .flat()
-    .sort((a: any, b: any) => (a.joinedAt || 0) - (b.joinedAt || 0))
+    .sort((a: any, b: any) => 
+      (a.joinedAt || 0) - (b.joinedAt || 0) || 
+      (a.userId || '').localeCompare(b.userId || '')
+    )
     .map((p: any) => p.userId);
 };
 
@@ -128,7 +131,9 @@ export function useSupabaseRoom(roomId?: string) {
       
       const { x, y, attackerId } = payload;
       const store = useGameStore.getState();
-      if (store.isSpectator) return;
+      
+      // Only process if we are NOT the attacker and NOT a spectator
+      if (store.isSpectator || attackerId === myUserId) return;
 
       const result = store.receiveEnemyShot(x, y);
       if (!result) return;

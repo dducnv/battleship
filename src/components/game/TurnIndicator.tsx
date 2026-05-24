@@ -5,14 +5,27 @@ import { Target, Circle } from 'lucide-react';
 
 export default function TurnIndicator() {
   const isMyTurn = useGameStore(s => s.isMyTurn);
+  const isSpectator = useGameStore(s => s.isSpectator);
+  const activeTurnId = useGameStore(s => s.activeTurnId);
+  const playerIds = useGameStore(s => s.playerIds);
   const lastShotResult = useGameStore(s => s.lastShotResult);
 
+  const getTurnText = () => {
+    if (isSpectator) {
+      const playerIndex = playerIds.indexOf(activeTurnId || '');
+      return playerIndex !== -1 ? `Player ${playerIndex + 1}'s Turn` : 'Waiting for turn...';
+    }
+    return isMyTurn ? 'Your Turn — Fire!' : 'Enemy is aiming...';
+  };
+
+  const isActive = isSpectator ? !!activeTurnId : isMyTurn;
+
   return (
-    <div className={`turn-indicator ${isMyTurn ? 'turn-indicator--my-turn' : 'turn-indicator--enemy-turn'}`}>
+    <div className={`turn-indicator ${isActive ? 'turn-indicator--my-turn' : 'turn-indicator--enemy-turn'}`}>
       <div className="turn-indicator__status">
-        <div className={`turn-indicator__dot ${isMyTurn ? 'turn-indicator__dot--active' : ''}`} />
+        <div className={`turn-indicator__dot ${isActive ? 'turn-indicator__dot--active' : ''}`} />
         <span className="turn-indicator__text">
-          {isMyTurn ? 'Your Turn — Fire!' : 'Enemy is aiming...'}
+          {getTurnText()}
         </span>
       </div>
 

@@ -22,6 +22,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const lastShotResult = useGameStore(s => s.lastShotResult);
   const winnerId = useGameStore(s => s.winnerId);
   const mySocketId = useGameStore(s => s.mySocketId);
+  const isSpectator = useGameStore(s => s.isSpectator);
 
   const { playSound, startTheme, stopTheme } = useAudio();
 
@@ -78,7 +79,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         playSound('lose');
       }
     }
-  }, [phase, winnerId, mySocketId]);
+  }, [phase, winnerId, mySocketId, playSound]);
 
   const handleReady = () => {
     playerReady();
@@ -115,7 +116,15 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           )}
 
           {phase === 'placing' && (
-            <PlacementView onReady={handleReady} />
+            isSpectator ? (
+              <div className="waiting-screen">
+                <div className="waiting-screen__spinner" />
+                <h2>Players are preparing...</h2>
+                <p>Wait for the battle to begin</p>
+              </div>
+            ) : (
+              <PlacementView onReady={handleReady} />
+            )
           )}
 
           {phase === 'playing' && (

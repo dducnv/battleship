@@ -29,6 +29,8 @@ interface GameStore {
   opponentId: string | null;
   myReady: boolean;
   isSpectator: boolean;
+  playerIds: string[];
+  activeTurnId: string | null;
 
   // ── Stats & Enhancements ──
   turnCount: number;
@@ -40,7 +42,9 @@ interface GameStore {
 
   // ── Actions ──
   setSpectator: (isSpectator: boolean) => void;
+  setPlayerIds: (ids: string[]) => void;
   setAirStrikeUsed: (used: boolean) => void;
+  syncState: (data: Partial<GameStore>) => void;
   
   // ── Placement Actions ──
   selectShip: (shipId: string | null) => void;
@@ -87,6 +91,8 @@ const createInitialState = () => ({
   opponentId: null as string | null,
   myReady: false,
   isSpectator: false,
+  playerIds: [] as string[],
+  activeTurnId: null as string | null,
   turnCount: 0,
   myHitCount: 0,
   myMissCount: 0,
@@ -99,7 +105,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   ...createInitialState(),
 
   setSpectator: (isSpectator) => set({ isSpectator }),
+  setPlayerIds: (ids) => set({ playerIds: ids }),
   setAirStrikeUsed: (used) => set({ airStrikeUsed: used }),
+  syncState: (data) => set((s) => ({ ...s, ...data })),
 
   // ── Placement ──
 
@@ -228,12 +236,36 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { mySocketId } = get();
     set({
       phase: 'playing',
+      activeTurnId,
       isMyTurn: activeTurnId === mySocketId,
     });
   },
 
   onShotResult: (result) => {
-    const { mySocketId, trackingBoard, turnCount, myHitCount, myMissCount, consecutiveHits } = get();
+    const { mySocketId, trackingBoard, myBoard, isSpectator, playerIds, turnCount, myHitCount, myMissCount, consecutiveHits } = get();
+    
+    if (isSpectator) {
+      const [p1, p2] = playerIds;
+      const isPlayer1Attacking = result.attackerId === p1;
+      
+      if (isPlayer1Attacking) {
+        const newBoard = trackingBoard.map(row => [...row]);
+        newBoard[result.y][result.x] = result.isHit ? CellState.Hit : CellState.Miss;
+        set({ trackingBoard: newBoard });
+      } else {
+        const newBoard = myBoard.map(row => [...row]);
+        newBoard[result.y][result.x] = result.isHit ? CellState.Hit : CellState.Miss;
+        set({ myBoard: newBoard });
+      }
+
+      set({
+        isMyTurn: false,
+        activeTurnId: result.nextTurnId,
+        lastShotResult: result,
+      });
+      return;
+    }
+
     const isIWasAttacker = result.attackerId === mySocketId;
 
     if (isIWasAttacker) {
@@ -243,6 +275,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       
       set({
         trackingBoard: newTracking,
+        activeTurnId: result.nextTurnId,
         isMyTurn: result.nextTurnId === mySocketId,
         lastShotResult: result,
         turnCount: turnCount + 1,
@@ -253,6 +286,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } else {
       // Enemy shot result (already updated myBoard in receiveEnemyShot)
       set({
+        activeTurnId: result.nextTurnId,
         isMyTurn: result.nextTurnId === mySocketId,
         lastShotResult: result,
       });

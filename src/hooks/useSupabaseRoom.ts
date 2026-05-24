@@ -73,7 +73,14 @@ export function useSupabaseRoom(roomId?: string) {
       lobbyStore.setTotalPlayers(playersInRoom.length);
 
       const myIndex = playersInRoom.indexOf(myUserId);
-      gameStore.setSpectator(myIndex >= 2);
+      const isSpectator = myIndex >= 2;
+      gameStore.setSpectator(isSpectator);
+      gameStore.setPlayerIds(playersInRoom.slice(0, 2));
+
+      if (isSpectator && gameStore.phase === 'waiting') {
+        // New spectator joined, request current state
+        channel.send({ type: 'broadcast', event: 'request_sync', payload: {} });
+      }
 
       if (playersInRoom.length >= 2 && gameStore.phase === 'waiting') {
         gameStore.setPhase('placing');
@@ -145,6 +152,38 @@ export function useSupabaseRoom(roomId?: string) {
       gameStore.reset();
       gameStore.setPhase('placing');
       gameStore.setMySocketId(myUserId);
+    });
+
+    channel.on('broadcast', { event: 'request_sync' }, () => {
+      const state = channel.presenceState();
+      const players = Object.keys(state).sort();
+      if (players[0] === myUserId) {
+        const store = useGameStore.getState();
+        channel.send({
+          type: 'broadcast',
+          event: 'sync_state',
+          payload: {
+            phase: store.phase,
+            player1Board: store.myBoard,
+            player2Board: store.trackingBoard,
+            activeTurnId: store.activeTurnId,
+          }
+        });
+      }
+    });
+
+    channel.on('broadcast', { event: 'sync_state' }, (event) => {
+      const store = useGameStore.getState();
+      if (store.isSpectator && event.payload) {
+        const { phase, player1Board, player2Board, activeTurnId } = event.payload;
+        store.syncState({
+          phase,
+          myBoard: player1Board,
+          trackingBoard: player2Board,
+          activeTurnId,
+          isMyTurn: false,
+        });
+      }
     });
 
     channel.subscribe((status) => {

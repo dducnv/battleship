@@ -26,15 +26,16 @@ export default function BattleView({ onFireShot, onRadarScan }: BattleViewProps)
 
   const [isRadarMode, setIsRadarMode] = useState(false);
   const [showCombo, setShowCombo] = useState(false);
+  const [displayCombo, setDisplayCombo] = useState(0);
 
   useEffect(() => {
     if (consecutiveHits >= 3) {
-      const showTimer = setTimeout(() => setShowCombo(true), 0);
-      const hideTimer = setTimeout(() => setShowCombo(false), 2000);
-      return () => {
-        clearTimeout(showTimer);
-        clearTimeout(hideTimer);
-      };
+      setDisplayCombo(consecutiveHits);
+      setShowCombo(true);
+      const timer = setTimeout(() => setShowCombo(false), 2000);
+      return () => clearTimeout(timer);
+    } else if (consecutiveHits === 0) {
+      setShowCombo(false);
     }
   }, [consecutiveHits]);
 
@@ -80,8 +81,8 @@ export default function BattleView({ onFireShot, onRadarScan }: BattleViewProps)
       <TurnIndicator />
 
       {showCombo && (
-        <div className={`combo-indicator ${!showCombo ? 'combo-out' : ''}`}>
-          <div className="combo-text">COMBO x{consecutiveHits}</div>
+        <div className="combo-indicator">
+          <div className="combo-text">COMBO x{displayCombo}</div>
           <div className="combo-subtext">ON FIRE!</div>
         </div>
       )}

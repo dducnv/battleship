@@ -1,6 +1,7 @@
 'use client';
 
 import { useLobbyStore } from '../../store/lobby-store';
+import { useGameStore } from '../../store/game-store';
 import { useAudio } from '../../hooks/useAudio';
 import { VolumeX, Volume1, Volume2 } from 'lucide-react';
 
@@ -9,6 +10,15 @@ export default function StatusBar() {
   const roomId = useLobbyStore(s => s.roomId);
   const totalPlayers = useLobbyStore(s => s.totalPlayers);
   const { volume, setVolume } = useAudio();
+
+  // Game stats
+  const phase = useGameStore(s => s.phase);
+  const turnCount = useGameStore(s => s.turnCount);
+  const myHitCount = useGameStore(s => s.myHitCount);
+
+  const accuracy = turnCount > 0
+    ? Math.round((myHitCount / turnCount) * 100)
+    : 0;
 
   const getVolumeIcon = () => {
     if (volume === 0) return <VolumeX size={14} />;
@@ -29,6 +39,18 @@ export default function StatusBar() {
             <span className="status-bar__room">Room: {roomId}</span>
             <span className="status-bar__divider">|</span>
             <span className="status-bar__players">Players: {totalPlayers}/2</span>
+          </>
+        )}
+        {phase === 'playing' && (
+          <>
+            <span className="status-bar__divider">|</span>
+            <span className="status-bar__stats">
+              Turns: <span style={{ color: 'var(--color-primary)' }}>{turnCount}</span>
+            </span>
+            <span className="status-bar__divider">|</span>
+            <span className="status-bar__stats">
+              Acc: <span style={{ color: 'var(--color-valid)' }}>{accuracy}%</span>
+            </span>
           </>
         )}
       </div>

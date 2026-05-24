@@ -30,8 +30,19 @@ interface GameStore {
   myReady: boolean;
   isSpectator: boolean;
 
+  // ── Stats & Enhancements ──
+  turnCount: number;
+  myHitCount: number;
+  myMissCount: number;
+  consecutiveHits: number;
+  lastEnemyShot: [number, number] | null;
+  radarUsed: boolean;
+  airStrikeUsed: boolean;
+
   // ── Actions ──
   setSpectator: (isSpectator: boolean) => void;
+  setRadarUsed: (used: boolean) => void;
+  setAirStrikeUsed: (used: boolean) => void;
   
   // ── Placement Actions ──
   selectShip: (shipId: string | null) => void;
@@ -57,6 +68,8 @@ interface GameStore {
   receiveEnemyShot: (x: number, y: number) => { isHit: boolean; isSunk: boolean; sunkShipId: string | null; isGameOver: boolean } | null;
   onGameOver: (winnerId: string, opponentBoard?: Board) => void;
   onOpponentReady: (opponentId?: string) => void;
+  onRadarResult: (results: { x: number, y: number, state: number }[]) => void;
+  receiveRadarRequest: (x: number, y: number) => { x: number, y: number, state: number }[];
 
   // ── Reset ──
   reset: () => void;
@@ -78,12 +91,21 @@ const createInitialState = () => ({
   opponentId: null as string | null,
   myReady: false,
   isSpectator: false,
+  turnCount: 0,
+  myHitCount: 0,
+  myMissCount: 0,
+  consecutiveHits: 0,
+  lastEnemyShot: null as [number, number] | null,
+  radarUsed: false,
+  airStrikeUsed: false,
 });
 
 export const useGameStore = create<GameStore>((set, get) => ({
   ...createInitialState(),
 
   setSpectator: (isSpectator) => set({ isSpectator }),
+  setRadarUsed: (used) => set({ radarUsed: used }),
+  setAirStrikeUsed: (used) => set({ airStrikeUsed: used }),
 
   // ── Placement ──
 
@@ -217,17 +239,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   onShotResult: (result) => {
-    const { mySocketId, trackingBoard } = get();
+    const { mySocketId, trackingBoard, turnCount, myHitCount, myMissCount, consecutiveHits } = get();
     const isIWasAttacker = result.attackerId === mySocketId;
 
     if (isIWasAttacker) {
-      // My shot result → update tracking board
+      // My shot result → update tracking board and stats
       const newTracking = trackingBoard.map(row => [...row]);
       newTracking[result.y][result.x] = result.isHit ? CellState.Hit : CellState.Miss;
+      
       set({
         trackingBoard: newTracking,
         isMyTurn: result.nextTurnId === mySocketId,
         lastShotResult: result,
+        turnCount: turnCount + 1,
+        myHitCount: result.isHit ? myHitCount + 1 : myHitCount,
+        myMissCount: !result.isHit ? myMissCount + 1 : myMissCount,
+        consecutiveHits: result.isHit ? consecutiveHits + 1 : 0,
       });
     } else {
       // Enemy shot result (already updated myBoard in receiveEnemyShot)
@@ -238,9 +265,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
-  onEnemyShot: (x, y, isHit) => {
-    // This is now redundant with receiveEnemyShot but kept for safety
-    // or we can remove it. Let's keep it but ensure it doesn't conflict.
+  onEnemyShot: () => {
+    // Redundant with receiveEnemyShot but kept as placeholder
   },
 
   receiveEnemyShot: (x, y) => {
@@ -282,6 +308,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       myBoard: newBoard,
       myShips: newShips,
+      lastEnemyShot: [x, y],
     });
 
     return { isHit, isSunk, sunkShipId, isGameOver };
@@ -296,6 +323,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   onOpponentReady: (opponentId) => set((s) => ({ opponentReady: true, opponentId: opponentId || s.opponentId })),
+
+  onRadarResult: (results) => {
+    const { trackingBoard } = get();
+    const newTracking = trackingBoard.map(row => [...row]);
+    results.forEach(({ x, y, state }) => {
+      // Only reveal if currently empty
+      if (newTracking[y][x] === CellState.Empty) {
+        newTracking[y][x] = state === CellState.Ship ? CellState.Revealed : CellState.Miss;
+      }
+    });
+    set({ trackingBoard: newTracking, radarUsed: true });
+  },
+
+  receiveRadarRequest: (centerX, centerY) => {
+    const { myBoard } = get();
+    const results = [];
+    for (let y = centerY - 1; y <= centerY + 1; y++) {
+      for (let x = centerX - 1; x <= centerX + 1; x++) {
+        if (x >= 0 && x < 10 && y >= 0 && y < 10) {
+          results.push({ x, y, state: myBoard[y][x] });
+        }
+      }
+    }
+    return results;
+  },
 
   // ── Reset ──
   reset: () => set(createInitialState()),

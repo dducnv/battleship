@@ -1,9 +1,15 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { supabase, myUserId } from '../supabase/client';
 import { useGameStore } from '../store/game-store';
 import { useLobbyStore } from '../store/lobby-store';
+
+interface PresenceState {
+  userId: string;
+  ready: boolean;
+  [key: string]: unknown;
+}
 
 function generateRoomId() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -49,7 +55,7 @@ export function useSupabaseRoom(roomId?: string) {
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
       const playersInRoom = Object.keys(state).sort();
-      const allPresence = Object.values(state).flat() as any[];
+      const allPresence = Object.values(state).flat() as unknown as PresenceState[];
 
       lobbyStore.setConnected(true);
       lobbyStore.setJoining(false);
@@ -115,6 +121,21 @@ export function useSupabaseRoom(roomId?: string) {
       useGameStore.getState().onGameOver(payload.winnerId, payload.opponentBoard);
     });
 
+    channel.on('broadcast', { event: 'request_radar' }, ({ payload }) => {
+      const { x, y, requesterId } = payload;
+      if (requesterId === myUserId) return;
+      const store = useGameStore.getState();
+      const results = store.receiveRadarRequest(x, y);
+      channel.send({ type: 'broadcast', event: 'radar_response', payload: { results, targetId: requesterId } });
+    });
+
+    channel.on('broadcast', { event: 'radar_response' }, ({ payload }) => {
+      const { results, targetId } = payload;
+      if (targetId === myUserId) {
+        useGameStore.getState().onRadarResult(results);
+      }
+    });
+
     channel.on('broadcast', { event: 'request_restart' }, () => {
       channel.track({ ready: false, userId: myUserId });
       gameStore.reset();
@@ -163,6 +184,12 @@ export function useSupabaseRoom(roomId?: string) {
       const channel = globalChannel;
       if (channel && channel.state === 'joined') {
         channel.send({ type: 'broadcast', event: 'fire_shot', payload: { attackerId: myUserId, x, y } });
+      }
+    },
+    requestRadar: (x: number, y: number) => {
+      const channel = globalChannel;
+      if (channel && channel.state === 'joined') {
+        channel.send({ type: 'broadcast', event: 'request_radar', payload: { requesterId: myUserId, x, y } });
       }
     },
     requestRestart: () => {

@@ -1,6 +1,5 @@
 'use client';
 
-import { useGameStore } from '../../store/game-store';
 import { useWinner } from '../../hooks/useGameState';
 import { Trophy, Skull, RefreshCw, LogOut } from 'lucide-react';
 

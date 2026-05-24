@@ -15,7 +15,7 @@ import { use } from 'react';
 export default function GameRoom({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
   const router = useRouter();
-  const { playerReady, fireShot, requestRestart, disconnect } = useSupabaseRoom(roomId);
+  const { playerReady, fireShot, requestRadar, requestRestart, disconnect } = useSupabaseRoom(roomId);
   const phase = useGameStore(s => s.phase);
   const error = useLobbyStore(s => s.error);
   const isMyTurn = useGameStore(s => s.isMyTurn);
@@ -57,7 +57,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
       // If it was a hit, play explosion shortly after
       if (lastShotResult.isHit) {
         setTimeout(() => playSound('explosion'), 300);
-        
+
         // Trigger screen shake
         document.body.classList.add('screen-shake');
         setTimeout(() => document.body.classList.remove('screen-shake'), 400);
@@ -119,7 +119,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           )}
 
           {phase === 'playing' && (
-            <BattleView onFireShot={fireShot} />
+            <BattleView onFireShot={fireShot} onRadarScan={requestRadar} />
           )}
 
           {phase === 'ended' && (

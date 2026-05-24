@@ -13,6 +13,7 @@ interface CellProps {
   previewValid?: boolean;
   onClick?: (x: number, y: number) => void;
   disabled?: boolean;
+  isLastMove?: boolean;
 }
 
 export default function Cell({
@@ -25,6 +26,7 @@ export default function Cell({
   previewValid,
   onClick,
   disabled,
+  isLastMove,
 }: CellProps) {
   const handleClick = () => {
     if (!disabled && onClick) {
@@ -51,6 +53,10 @@ export default function Cell({
       cellClass += ' cell--hit';
       content = <X size={24} strokeWidth={3} />;
       break;
+    case CellState.Revealed:
+      cellClass += ' cell--revealed';
+      content = <Circle size={8} fill="var(--color-primary)" opacity={0.6} />;
+      break;
   }
 
   if (showHoverPreview) {
@@ -59,6 +65,10 @@ export default function Cell({
 
   if (isValidTarget && !disabled) {
     cellClass += ' cell--targetable';
+  }
+
+  if (isLastMove) {
+    cellClass += ' cell--last-move';
   }
 
   if (disabled) {

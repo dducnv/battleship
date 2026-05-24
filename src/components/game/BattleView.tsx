@@ -1,33 +1,90 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import Grid from '../board/Grid';
 import TurnIndicator from './TurnIndicator';
 import { useGameStore } from '../../store/game-store';
 import { CellState } from '../../game/constants';
+import { Radar, Wind } from 'lucide-react';
 
 interface BattleViewProps {
   onFireShot: (x: number, y: number) => void;
+  onRadarScan: (x: number, y: number) => void;
 }
 
-export default function BattleView({ onFireShot }: BattleViewProps) {
+export default function BattleView({ onFireShot, onRadarScan }: BattleViewProps) {
   const myBoard = useGameStore(s => s.myBoard);
   const myShips = useGameStore(s => s.myShips);
   const trackingBoard = useGameStore(s => s.trackingBoard);
   const isMyTurn = useGameStore(s => s.isMyTurn);
   const isSpectator = useGameStore(s => s.isSpectator);
+  const lastEnemyShot = useGameStore(s => s.lastEnemyShot);
+  const consecutiveHits = useGameStore(s => s.consecutiveHits);
+  const radarUsed = useGameStore(s => s.radarUsed);
+  const airStrikeUsed = useGameStore(s => s.airStrikeUsed);
+  const setAirStrikeUsed = useGameStore(s => s.setAirStrikeUsed);
+
+  const [isRadarMode, setIsRadarMode] = useState(false);
+  const [showCombo, setShowCombo] = useState(false);
+
+  useEffect(() => {
+    if (consecutiveHits >= 3) {
+      const showTimer = setTimeout(() => setShowCombo(true), 0);
+      const hideTimer = setTimeout(() => setShowCombo(false), 2000);
+      return () => {
+        clearTimeout(showTimer);
+        clearTimeout(hideTimer);
+      };
+    }
+  }, [consecutiveHits]);
 
   const handleTrackingClick = useCallback((x: number, y: number) => {
     if (!isMyTurn || isSpectator) return;
-    // Don't fire at already-targeted cells
+
+    if (isRadarMode) {
+      onRadarScan(x, y);
+      setIsRadarMode(false);
+      return;
+    }
+
+    // Don't fire at already-targeted cells (unless revealed)
     const cell = trackingBoard[y][x];
     if (cell === CellState.Hit || cell === CellState.Miss) return;
+    
     onFireShot(x, y);
-  }, [isMyTurn, isSpectator, trackingBoard, onFireShot]);
+  }, [isMyTurn, isSpectator, trackingBoard, onFireShot, isRadarMode, onRadarScan]);
+
+  const handleAirStrike = () => {
+    if (!isMyTurn || isSpectator || airStrikeUsed) return;
+    
+    setAirStrikeUsed(true);
+    // Pick 3 random untargeted cells
+    const untargeted: [number, number][] = [];
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
+        if (trackingBoard[y][x] === CellState.Empty || trackingBoard[y][x] === CellState.Revealed) {
+          untargeted.push([x, y]);
+        }
+      }
+    }
+
+    // Shuffle and pick 3
+    const picks = untargeted.sort(() => Math.random() - 0.5).slice(0, 3);
+    picks.forEach(([x, y], i) => {
+      setTimeout(() => onFireShot(x, y), i * 600);
+    });
+  };
 
   return (
     <div className="battle-view">
       <TurnIndicator />
+
+      {showCombo && (
+        <div className={`combo-indicator ${!showCombo ? 'combo-out' : ''}`}>
+          <div className="combo-text">COMBO x{consecutiveHits}</div>
+          <div className="combo-subtext">ON FIRE!</div>
+        </div>
+      )}
 
       <div className="battle-view__main">
         <div className="battle-view__grids" style={{ pointerEvents: isSpectator ? 'none' : 'auto' }}>
@@ -37,16 +94,43 @@ export default function BattleView({ onFireShot }: BattleViewProps) {
             ships={myShips}
             disabled={true}
             label={isSpectator ? "Player 1" : "Your Waters"}
+            lastMove={lastEnemyShot}
           />
+
+          <div className="battle-view__actions">
+            <button 
+              className={`btn btn--secondary ${isRadarMode ? 'btn--primary' : ''}`}
+              disabled={radarUsed || !isMyTurn || isSpectator}
+              onClick={() => setIsRadarMode(!isRadarMode)}
+              title="Radar Scan (3x3 Reveal)"
+              style={{ flexDirection: 'column', padding: '8px', minWidth: '60px' }}
+            >
+              <Radar size={20} />
+              <span className="btn-label">{radarUsed ? 'USED' : 'RADAR'}</span>
+            </button>
+            <button 
+              className="btn btn--secondary"
+              disabled={airStrikeUsed || !isMyTurn || isSpectator}
+              onClick={handleAirStrike}
+              title="Air Strike (3 Random Shots)"
+              style={{ flexDirection: 'column', padding: '8px', minWidth: '60px' }}
+            >
+              <Wind size={20} />
+              <span className="btn-label">{airStrikeUsed ? 'USED' : 'STRIKE'}</span>
+            </button>
+          </div>
+
           <Grid
             board={trackingBoard}
             isOwn={false}
             disabled={!isMyTurn || isSpectator}
             onClick={handleTrackingClick}
             label={isSpectator ? "Player 2" : "Enemy Waters"}
+            radarActive={isMyTurn && !isSpectator}
           />
         </div>
       </div>
     </div>
   );
 }
+

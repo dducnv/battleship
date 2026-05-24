@@ -52,9 +52,9 @@ export default function StatusBar() {
       <div className="status-bar__center">
         {roomId && (
           <div className="status-bar__vs">
-            <span className="player-name">{getPlayerLabel(0)}</span>
-            <span className="vs-tag">VS</span>
-            <span className="player-name">{getPlayerLabel(1)}</span>
+            <span className="status-bar__player-name">{getPlayerLabel(0)}</span>
+            <span className="status-bar__vs-tag">VS</span>
+            <span className="status-bar__player-name">{getPlayerLabel(1)}</span>
           </div>
         )}
       </div>

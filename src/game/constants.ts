@@ -15,5 +15,4 @@ export enum CellState {
   Ship  = 1,
   Miss  = 2,
   Hit   = 3,
-  Revealed = 4, // Ship detected but not hit yet
 }

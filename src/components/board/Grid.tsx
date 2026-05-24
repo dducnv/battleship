@@ -20,7 +20,6 @@ interface GridProps {
   label?: string;
   interactive?: boolean;        // allow interactive ship movements/rotations
   lastMove?: [number, number] | null; // last shot coordinate
-  radarActive?: boolean;        // show radar scanning effect
 }
 
 const COL_LABELS = Array.from({ length: BOARD_SIZE }, (_, i) => String.fromCharCode(65 + i));
@@ -38,7 +37,6 @@ export default function Grid({
   label,
   interactive,
   lastMove,
-  radarActive,
 }: GridProps) {
   const previewSet = new Set(
     hoverPreview?.cells.map(([x, y]) => `${x},${y}`) ?? []
@@ -66,11 +64,9 @@ export default function Grid({
           </div>
 
           <div
-            className={`grid-cells ${radarActive ? 'grid-cells--radar' : ''}`}
+            className="grid-cells"
             onMouseLeave={onCellLeave}
           >
-            {radarActive && <div className="grid-radar-line" />}
-            
             {board.map((row, y) =>
               row.map((cellState, x) => (
                 <div
@@ -102,4 +98,3 @@ export default function Grid({
     </div>
   );
 }
-

@@ -5,14 +5,13 @@ import Grid from '../board/Grid';
 import TurnIndicator from './TurnIndicator';
 import { useGameStore } from '../../store/game-store';
 import { CellState } from '../../game/constants';
-import { Radar, Wind } from 'lucide-react';
+import { Wind } from 'lucide-react';
 
 interface BattleViewProps {
   onFireShot: (x: number, y: number) => void;
-  onRadarScan: (x: number, y: number) => void;
 }
 
-export default function BattleView({ onFireShot, onRadarScan }: BattleViewProps) {
+export default function BattleView({ onFireShot }: BattleViewProps) {
   const myBoard = useGameStore(s => s.myBoard);
   const myShips = useGameStore(s => s.myShips);
   const trackingBoard = useGameStore(s => s.trackingBoard);
@@ -20,11 +19,9 @@ export default function BattleView({ onFireShot, onRadarScan }: BattleViewProps)
   const isSpectator = useGameStore(s => s.isSpectator);
   const lastEnemyShot = useGameStore(s => s.lastEnemyShot);
   const consecutiveHits = useGameStore(s => s.consecutiveHits);
-  const radarUsed = useGameStore(s => s.radarUsed);
   const airStrikeUsed = useGameStore(s => s.airStrikeUsed);
   const setAirStrikeUsed = useGameStore(s => s.setAirStrikeUsed);
 
-  const [isRadarMode, setIsRadarMode] = useState(false);
   const [showCombo, setShowCombo] = useState(false);
   const [displayCombo, setDisplayCombo] = useState(0);
 
@@ -42,18 +39,12 @@ export default function BattleView({ onFireShot, onRadarScan }: BattleViewProps)
   const handleTrackingClick = useCallback((x: number, y: number) => {
     if (!isMyTurn || isSpectator) return;
 
-    if (isRadarMode) {
-      onRadarScan(x, y);
-      setIsRadarMode(false);
-      return;
-    }
-
-    // Don't fire at already-targeted cells (unless revealed)
+    // Don't fire at already-targeted cells
     const cell = trackingBoard[y][x];
     if (cell === CellState.Hit || cell === CellState.Miss) return;
     
     onFireShot(x, y);
-  }, [isMyTurn, isSpectator, trackingBoard, onFireShot, isRadarMode, onRadarScan]);
+  }, [isMyTurn, isSpectator, trackingBoard, onFireShot]);
 
   const handleAirStrike = () => {
     if (!isMyTurn || isSpectator || airStrikeUsed) return;
@@ -63,7 +54,7 @@ export default function BattleView({ onFireShot, onRadarScan }: BattleViewProps)
     const untargeted: [number, number][] = [];
     for (let y = 0; y < 10; y++) {
       for (let x = 0; x < 10; x++) {
-        if (trackingBoard[y][x] === CellState.Empty || trackingBoard[y][x] === CellState.Revealed) {
+        if (trackingBoard[y][x] === CellState.Empty) {
           untargeted.push([x, y]);
         }
       }
@@ -100,16 +91,6 @@ export default function BattleView({ onFireShot, onRadarScan }: BattleViewProps)
 
           <div className="battle-view__actions">
             <button 
-              className={`btn btn--secondary ${isRadarMode ? 'btn--primary' : ''}`}
-              disabled={radarUsed || !isMyTurn || isSpectator}
-              onClick={() => setIsRadarMode(!isRadarMode)}
-              title="Radar Scan (3x3 Reveal)"
-              style={{ flexDirection: 'column', padding: '8px', minWidth: '60px' }}
-            >
-              <Radar size={20} />
-              <span className="btn-label">{radarUsed ? 'USED' : 'RADAR'}</span>
-            </button>
-            <button 
               className="btn btn--secondary"
               disabled={airStrikeUsed || !isMyTurn || isSpectator}
               onClick={handleAirStrike}
@@ -127,11 +108,9 @@ export default function BattleView({ onFireShot, onRadarScan }: BattleViewProps)
             disabled={!isMyTurn || isSpectator}
             onClick={handleTrackingClick}
             label={isSpectator ? "Player 2" : "Enemy Waters"}
-            radarActive={isMyTurn && !isSpectator}
           />
         </div>
       </div>
     </div>
   );
 }
-

@@ -36,12 +36,10 @@ interface GameStore {
   myMissCount: number;
   consecutiveHits: number;
   lastEnemyShot: [number, number] | null;
-  radarUsed: boolean;
   airStrikeUsed: boolean;
 
   // ── Actions ──
   setSpectator: (isSpectator: boolean) => void;
-  setRadarUsed: (used: boolean) => void;
   setAirStrikeUsed: (used: boolean) => void;
   
   // ── Placement Actions ──
@@ -68,8 +66,6 @@ interface GameStore {
   receiveEnemyShot: (x: number, y: number) => { isHit: boolean; isSunk: boolean; sunkShipId: string | null; isGameOver: boolean } | null;
   onGameOver: (winnerId: string, opponentBoard?: Board) => void;
   onOpponentReady: (opponentId?: string) => void;
-  onRadarResult: (results: { x: number, y: number, state: number }[]) => void;
-  receiveRadarRequest: (x: number, y: number) => { x: number, y: number, state: number }[];
 
   // ── Reset ──
   reset: () => void;
@@ -96,7 +92,6 @@ const createInitialState = () => ({
   myMissCount: 0,
   consecutiveHits: 0,
   lastEnemyShot: null as [number, number] | null,
-  radarUsed: false,
   airStrikeUsed: false,
 });
 
@@ -104,7 +99,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   ...createInitialState(),
 
   setSpectator: (isSpectator) => set({ isSpectator }),
-  setRadarUsed: (used) => set({ radarUsed: used }),
   setAirStrikeUsed: (used) => set({ airStrikeUsed: used }),
 
   // ── Placement ──
@@ -323,31 +317,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   onOpponentReady: (opponentId) => set((s) => ({ opponentReady: true, opponentId: opponentId || s.opponentId })),
-
-  onRadarResult: (results) => {
-    const { trackingBoard } = get();
-    const newTracking = trackingBoard.map(row => [...row]);
-    results.forEach(({ x, y, state }) => {
-      // Only reveal if currently empty
-      if (newTracking[y][x] === CellState.Empty) {
-        newTracking[y][x] = state === CellState.Ship ? CellState.Revealed : CellState.Miss;
-      }
-    });
-    set({ trackingBoard: newTracking, radarUsed: true });
-  },
-
-  receiveRadarRequest: (centerX, centerY) => {
-    const { myBoard } = get();
-    const results = [];
-    for (let y = centerY - 1; y <= centerY + 1; y++) {
-      for (let x = centerX - 1; x <= centerX + 1; x++) {
-        if (x >= 0 && x < 10 && y >= 0 && y < 10) {
-          results.push({ x, y, state: myBoard[y][x] });
-        }
-      }
-    }
-    return results;
-  },
 
   // ── Reset ──
   reset: () => set(createInitialState()),

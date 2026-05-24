@@ -140,23 +140,6 @@ export function useSupabaseRoom(roomId?: string) {
       }
     });
 
-    channel.on('broadcast', { event: 'request_radar' }, (event) => {
-      const payload = event.payload;
-      if (!payload || payload.requesterId === myUserId) return;
-      
-      const { x, y, requesterId } = payload;
-      const store = useGameStore.getState();
-      const results = store.receiveRadarRequest(x, y);
-      channel.send({ type: 'broadcast', event: 'radar_response', payload: { results, targetId: requesterId } });
-    });
-
-    channel.on('broadcast', { event: 'radar_response' }, (event) => {
-      const payload = event.payload;
-      if (!payload || payload.targetId !== myUserId) return;
-      
-      useGameStore.getState().onRadarResult(payload.results);
-    });
-
     channel.on('broadcast', { event: 'request_restart' }, () => {
       channel.track({ ready: false, userId: myUserId });
       gameStore.reset();
@@ -204,12 +187,6 @@ export function useSupabaseRoom(roomId?: string) {
       const channel = globalChannel;
       if (channel) {
         channel.send({ type: 'broadcast', event: 'fire_shot', payload: { attackerId: myUserId, x, y } });
-      }
-    },
-    requestRadar: (x: number, y: number) => {
-      const channel = globalChannel;
-      if (channel) {
-        channel.send({ type: 'broadcast', event: 'request_radar', payload: { requesterId: myUserId, x, y } });
       }
     },
     requestRestart: () => {

@@ -15,7 +15,7 @@ import { use } from 'react';
 export default function GameRoom({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
   const router = useRouter();
-  const { playerReady, fireShot, requestRadar, requestRestart, disconnect } = useSupabaseRoom(roomId);
+  const { playerReady, fireShot, requestRestart, disconnect } = useSupabaseRoom(roomId);
   const phase = useGameStore(s => s.phase);
   const error = useLobbyStore(s => s.error);
   const isMyTurn = useGameStore(s => s.isMyTurn);
@@ -119,7 +119,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           )}
 
           {phase === 'playing' && (
-            <BattleView onFireShot={fireShot} onRadarScan={requestRadar} />
+            <BattleView onFireShot={fireShot} />
           )}
 
           {phase === 'ended' && (

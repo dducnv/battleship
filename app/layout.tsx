@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "Battleship — Online Multiplayer P2P Naval Combat",
   description: "Play the classic Battleship game online with friends. Real-time peer-to-peer naval warfare built with Next.js and Supabase. No registration required, just create a room and play!",
   keywords: ["Battleship", "Multiplayer Game", "P2P Game", "Online Battleship", "Naval Combat", "Strategy Game", "Next.js", "Supabase"],
+  other: {
+    google: "notranslate",
+  },
   authors: [{ name: "Battleship P2P Team" }],
   openGraph: {
     title: "Battleship — Online Multiplayer P2P Naval Combat",
@@ -43,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="notranslate">
       <head>
         <link
           href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"

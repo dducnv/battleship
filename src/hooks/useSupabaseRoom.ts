@@ -55,7 +55,9 @@ export function useSupabaseRoom(roomId?: string) {
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
       const playersInRoom = Object.keys(state).sort();
-      const allPresence = Object.values(state).flat() as unknown as PresenceState[];
+      // Use reduce instead of flat() for better browser compatibility
+      const allPresence = Object.values(state).reduce((acc: PresenceState[], val) => 
+        acc.concat(val as unknown as PresenceState[]), []) as PresenceState[];
 
       lobbyStore.setConnected(true);
       lobbyStore.setJoining(false);
@@ -82,14 +84,18 @@ export function useSupabaseRoom(roomId?: string) {
       }
     });
 
-    channel.on('broadcast', { event: 'player_ready' }, ({ payload }) => {
-      if (payload.userId !== myUserId) {
-        gameStore.onOpponentReady(payload.userId);
-        attemptStart();
-      }
+    channel.on('broadcast', { event: 'player_ready' }, (event) => {
+      const payload = event.payload;
+      if (!payload || payload.userId === myUserId) return;
+      
+      gameStore.onOpponentReady(payload.userId);
+      attemptStart();
     });
 
-    channel.on('broadcast', { event: 'fire_shot' }, ({ payload }) => {
+    channel.on('broadcast', { event: 'fire_shot' }, (event) => {
+      const payload = event.payload;
+      if (!payload) return;
+      
       const { x, y, attackerId } = payload;
       const store = useGameStore.getState();
       if (store.isSpectator) return;
@@ -113,27 +119,33 @@ export function useSupabaseRoom(roomId?: string) {
       }
     });
 
-    channel.on('broadcast', { event: 'shot_result' }, ({ payload }) => {
-      useGameStore.getState().onShotResult(payload);
+    channel.on('broadcast', { event: 'shot_result' }, (event) => {
+      if (event.payload) {
+        useGameStore.getState().onShotResult(event.payload);
+      }
     });
 
-    channel.on('broadcast', { event: 'game_over' }, ({ payload }) => {
-      useGameStore.getState().onGameOver(payload.winnerId, payload.opponentBoard);
+    channel.on('broadcast', { event: 'game_over' }, (event) => {
+      if (event.payload) {
+        useGameStore.getState().onGameOver(event.payload.winnerId, event.payload.opponentBoard);
+      }
     });
 
-    channel.on('broadcast', { event: 'request_radar' }, ({ payload }) => {
+    channel.on('broadcast', { event: 'request_radar' }, (event) => {
+      const payload = event.payload;
+      if (!payload || payload.requesterId === myUserId) return;
+      
       const { x, y, requesterId } = payload;
-      if (requesterId === myUserId) return;
       const store = useGameStore.getState();
       const results = store.receiveRadarRequest(x, y);
       channel.send({ type: 'broadcast', event: 'radar_response', payload: { results, targetId: requesterId } });
     });
 
-    channel.on('broadcast', { event: 'radar_response' }, ({ payload }) => {
-      const { results, targetId } = payload;
-      if (targetId === myUserId) {
-        useGameStore.getState().onRadarResult(results);
-      }
+    channel.on('broadcast', { event: 'radar_response' }, (event) => {
+      const payload = event.payload;
+      if (!payload || payload.targetId !== myUserId) return;
+      
+      useGameStore.getState().onRadarResult(payload.results);
     });
 
     channel.on('broadcast', { event: 'request_restart' }, () => {
@@ -145,15 +157,14 @@ export function useSupabaseRoom(roomId?: string) {
 
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
+        // Wait a small bit to ensure connection is stable before tracking
         setTimeout(() => {
-          if (channel.state === 'joined') {
-            channel.track({ ready: false, userId: myUserId });
-          }
+          channel.track({ ready: false, userId: myUserId });
         }, 100);
       } else if (status === 'CLOSED') {
         lobbyStore.setConnected(false);
       } else if (status === 'CHANNEL_ERROR') {
-        lobbyStore.setError('Failed to connect');
+        lobbyStore.setError('Failed to connect. Make sure Supabase Realtime is enabled in your project settings.');
       }
     });
 
@@ -182,13 +193,13 @@ export function useSupabaseRoom(roomId?: string) {
     },
     fireShot: (x: number, y: number) => {
       const channel = globalChannel;
-      if (channel && channel.state === 'joined') {
+      if (channel) {
         channel.send({ type: 'broadcast', event: 'fire_shot', payload: { attackerId: myUserId, x, y } });
       }
     },
     requestRadar: (x: number, y: number) => {
       const channel = globalChannel;
-      if (channel && channel.state === 'joined') {
+      if (channel) {
         channel.send({ type: 'broadcast', event: 'request_radar', payload: { requesterId: myUserId, x, y } });
       }
     },

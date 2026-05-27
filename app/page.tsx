@@ -95,8 +95,10 @@ export default function LobbyPage() {
       )}
 
       <footer className="lobby-footer">
-        <p>Created for P2P Naval Combat</p>
+        <p>Make by <a href="https://dducnv.dev" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>Duc</a> with all my heart ❤️</p>
         <div className="lobby-footer__credits">
+          <a href="https://github.com/dducnv/battleship" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <span className="lobby-footer__dot">|</span>
           <a href="https://opengameart.org/content/battle-theme-a" target="_blank" rel="noopener noreferrer">Battle Theme</a>
           <span className="lobby-footer__dot">|</span>
           <a href="https://opengameart.org/content/sci-fi-sound-effects-library" target="_blank" rel="noopener noreferrer">SFX Library</a>
